@@ -1,0 +1,58 @@
+name: monadic-party
+version: 0
+
+cabal-version: >= 1.10
+build-type: Simple
+
+library
+  hs-source-dirs: lib
+
+  exposed-modules:
+      MonadicParty.Scotty
+    , MonadicParty.Socket
+    , MonadicParty.Either
+
+  build-depends:
+      base
+    , data-default-class
+    , neat-interpolation
+    , network
+    , scotty
+    , socket-activation
+    , text
+
+  ghc-options: -Wall
+  default-language: Haskell2010
+
+executable party-scotty
+  hs-source-dirs: app
+  main-is: party-scotty.hs
+
+  build-depends:
+      base
+    , monadic-party
+
+  ghc-options: -Wall
+  default-language: Haskell2010
+
+executable party-socket
+  hs-source-dirs: app
+  main-is: party-socket.hs
+
+  build-depends:
+      base
+    , monadic-party
+
+  ghc-options: -Wall
+  default-language: Haskell2010
+
+executable party-either
+  hs-source-dirs: app
+  main-is: party-either.hs
+
+  build-depends:
+      base
+    , monadic-party
+
+  ghc-options: -Wall
+  default-language: Haskell2010

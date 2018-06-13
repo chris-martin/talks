@@ -1,0 +1,9 @@
+resolver: lts-11.8
+
+packages:
+  - .
+
+nix:
+  pure: false
+  packages:
+    - zlib

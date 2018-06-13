@@ -1,0 +1,1 @@
+import MonadicParty.Socket (main)
