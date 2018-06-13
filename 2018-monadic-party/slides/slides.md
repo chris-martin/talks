@@ -882,7 +882,7 @@ let
             config = {
                 networking.hostName = "monadic-party";
                 nixpkgs.config.allowUnfree = true;
-            }
+            };
         };
     };
 in
