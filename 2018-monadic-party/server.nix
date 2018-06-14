@@ -17,6 +17,7 @@ let
                 ./modules/party-scotty.nix
                 ./modules/party-socket.nix
                 ./modules/party-either.nix
+                ./modules/party-count.nix
 
             ];
 

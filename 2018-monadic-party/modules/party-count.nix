@@ -2,9 +2,9 @@
 
 {
     config = {
-        systemd.services.party-either = {
+        systemd.services.party-count = {
             enable = true;
-            description = "Monadic Party - Either";
+            description = "Monadic Party - Count";
             wantedBy = ["multi-user.target"];
             requires = ["party-either.socket" ];
 
@@ -16,14 +16,14 @@
             serviceConfig = {
                 User = "monadic-party";
                 Restart = "on-failure";
-                ExecStart = "${import ../monadic-party { inherit pkgs; }}/bin/party-either";
+                ExecStart = "${import ../monadic-party { inherit pkgs; }}/bin/party-count";
             };
         };
 
-        systemd.sockets.party-either = {
+        systemd.sockets.party-count = {
             wantedBy = ["sockets.target"];
             socketConfig = {
-                ListenStream = "/run/party-either.socket";
+                ListenStream = "/run/party-count.socket";
             };
         };
     };

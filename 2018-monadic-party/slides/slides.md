@@ -932,6 +932,11 @@ This is the same config as before, but now we've modified it to add another impo
         services.nginx = {
             enable = true;
 
+            recommendedGzipSettings = true;
+            recommendedOptimisation = true;
+            recommendedProxySettings = true;
+            recommendedTlsSettings = true;
+
             virtualHosts."monadic-party.chris-martin.org" = {
 
                 enableACME = true;
@@ -1112,4 +1117,41 @@ getNixpkgs =
 setNixPath :: Nixpkgs -> Shell ()
 setNixPath (Nixpkgs path) =
     export "NIX_PATH" ("nixpkgs=" <> path)
+```
+
+# Logging
+
+## A tiny logging framework
+
+```haskell
+data LogHandle = LogHandle (TChan Text)
+
+newLog :: IO LogHandle
+newLog =
+    LogHandle <$> newTChanIO
+
+writeToLog :: LogHandle -> Text -> IO ()
+writeToLog (LogHandle chan) message =
+    atomically (writeTChan chan message)
+
+runLogger :: LogHandle -> IO a
+runLogger (LogHandle chan) =
+    forever $ do
+        message <- atomically (readTChan chan)
+        Data.Text.IO.putStrLn message
+```
+
+## Main with a logger
+
+```haskell
+main :: IO ()
+main = do
+
+    IO.hSetBuffering IO.stdout IO.LineBuffering
+
+    logHandle <- newLog
+
+    runConcurrently $
+        Concurrently (runLogger logHandle) *>
+        Concurrently runServer
 ```

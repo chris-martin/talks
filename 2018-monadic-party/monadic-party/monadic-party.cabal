@@ -11,14 +11,17 @@ library
       MonadicParty.Scotty
     , MonadicParty.Socket
     , MonadicParty.Either
+    , MonadicParty.Count
 
   build-depends:
-      base
+      async
+    , base
     , data-default-class
     , neat-interpolation
     , network
     , scotty
     , socket-activation
+    , stm
     , text
 
   ghc-options: -Wall
@@ -49,6 +52,17 @@ executable party-socket
 executable party-either
   hs-source-dirs: app
   main-is: party-either.hs
+
+  build-depends:
+      base
+    , monadic-party
+
+  ghc-options: -Wall
+  default-language: Haskell2010
+
+executable party-count
+  hs-source-dirs: app
+  main-is: party-count.hs
 
   build-depends:
       base

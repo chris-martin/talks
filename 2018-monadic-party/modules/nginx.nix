@@ -39,6 +39,7 @@
                                         <li><a href="/scotty">Scotty</a>
                                         <li><a href="/socket">Activated socket</a>
                                         <li><a href="/either">Either port or socket</a>
+                                        <li><a href="/count">Counter</a>
                                     </ol>
                                 </body>
                             </html>
@@ -57,6 +58,9 @@
 
                 locations."/either".proxyPass =
                     "http://unix:/run/party-either.socket";
+
+                locations."/count".proxyPass =
+                    "http://unix:/run/party-count.socket";
 
             };
         };
