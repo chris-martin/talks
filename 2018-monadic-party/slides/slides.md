@@ -935,6 +935,7 @@ This is the same config as before, but now we've modified it to add another impo
             virtualHosts."monadic-party.chris-martin.org" = {
 
                 enableACME = true;
+                addSSL = true;
 
                 locations."/scotty".proxyPass =
                     "http://localhost:8000";
