@@ -48,7 +48,7 @@ main = do
 
 scottyApp :: Scotty.ScottyM ()
 scottyApp =
-    Scotty.get "/everything" $ do
+    Scotty.get "/either" $ do
         Scotty.html (Data.Text.Lazy.fromStrict [text|
             <!doctype html>
             <html>

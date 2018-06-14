@@ -837,9 +837,6 @@ I never really watched Star Trek, so it took me a long time to notice the motif 
 
 module MonadicParty.Scotty (main) where
 
--- base
-import qualified System.IO as IO
-
 -- neat-interpolation
 import NeatInterpolation
 

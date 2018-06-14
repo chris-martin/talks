@@ -2,9 +2,6 @@
 
 module MonadicParty.Scotty (main) where
 
--- base
-import qualified System.IO as IO
-
 -- neat-interpolation
 import NeatInterpolation
 

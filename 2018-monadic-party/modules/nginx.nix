@@ -7,16 +7,17 @@
         services.nginx = {
             enable = true;
 
-            #recommendedGzipSettings = true;
-            #recommendedOptimisation = true;
-            #recommendedProxySettings = true;
-            #recommendedTlsSettings = true;
+            recommendedGzipSettings = true;
+            recommendedOptimisation = true;
+            recommendedProxySettings = true;
+            recommendedTlsSettings = true;
 
             virtualHosts."monadic-party.chris-martin.org" = {
 
                 # Enable SSL magically by automatically getting
                 # an SSL certificate from Let's Encrypt
                 enableACME = true;
+                addSSL = true;
 
                 locations."/slides".root =
                     import ../slides { inherit pkgs; };
