@@ -29,13 +29,16 @@
                             <html>
                                 <head></head>
                                 <body>
-                                    <h1>Haskell in the Cloud at the Monadic Party</h1>
-                                    <p><a href="/slides">Slides</a></p>
+                                    <h3>Haskell in the Cloud at the Monadic Party</h3>
+                                    <ul>
+                                        <li><a href="/slides">Slides</a>
+                                        <li><a href="https://github.com/chris-martin/talks/tree/master/2018-monadic-party">Code</a>
+                                    </ul>
                                     <p>Demos:</p>
                                     <ol>
-                                        <li><a href="/scotty">Scotty</a></li>
-                                        <li><a href="/socket">Activated socket</a></li>
-                                        <li><a href="/either">Either port or socket</a></li>
+                                        <li><a href="/scotty">Scotty</a>
+                                        <li><a href="/socket">Activated socket</a>
+                                        <li><a href="/either">Either port or socket</a>
                                     </ol>
                                 </body>
                             </html>
