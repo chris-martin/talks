@@ -879,6 +879,7 @@ let
             config = {
                 networking.hostName = "monadic-party";
                 nixpkgs.config.allowUnfree = true;
+                users.users.monadic-party = {};
             };
         };
     };
@@ -950,7 +951,53 @@ This is the same config as before, but now we've modified it to add another impo
 }
 ```
 
+# Haskell on NixOS -- Day 2
+
+## Review
+
+- Nix is about repeatable builds that we can copy from one machine to another
+- Store paths are hashes of built inputs.
+- We launched an EC2 instance with a minimal NixOS config in the "user data"
+- We update it by running `./deploy.hs` that we walked through yesterday
+
+## Review (2)
+
+Haskell project setup:
+
+- `monadic-party.cabal`
+- `default.nix` specifies how to build a package for deployment
+- `shell.nix` defines our development environment
+
+## Review (3)
+
+Nix tools we've seen:
+
+- `nix-shell`
+- `nix-build`
+- `nix-copy-closure`
+- `nix-collect-garbage`
+
+## Review (4)
+
+NixOS modules on our server:
+
+- `modules/bootstrap.nix`
+- `modules/party-scotty.nix`
+- `modules/nginx.nix`
+
 # Systemd-activated sockets
+
+## The problem
+
+502 Bad Gateway
+
+## Socket activation
+
+- A program that is "socket-activated" receives "activated sockets"
+- Start services lazily
+  - When someone connects to the socket, systemd will start the associated service
+  - (This isn't relevant here, but it's cool)
+- The socket stays up even while the service is down
 
 ## `modules/party-socket.nix`
 
@@ -984,6 +1031,83 @@ This is the same config as before, but now we've modified it to add another impo
         };
     };
 }
+```
+
+## `socket-activation` Haskell library
+
+```haskell
+module Network.Socket.Activation where
+```
+
+```haskell
+-- | Return a list of activated sockets, if the program was started
+-- with socket activation. The sockets are in the same order as in
+-- the associated .socket file.
+getActivatedSockets :: IO (Maybe [Socket])
+```
+
+## `socket-activation` Haskell library (2)
+
+```haskell
+-- | Return a list of activated sockets, if the program was started
+-- with socket activation. The sockets are in the same order as in
+-- the associated .socket file.
+getActivatedSockets :: IO (Maybe [Socket])
+getActivatedSockets =
+  runMaybeT $ do
+    listenPid <- read <$> MaybeT (getEnv "LISTEN_PID")
+    listenFDs <- read <$> MaybeT (getEnv "LISTEN_FDS")
+    myPid     <- lift getProcessID
+    guard $ listenPid == myPid
+    mapM makeSocket [fdStart .. fdStart + listenFDs - 1]
+  where
+    fdStart = 3
+```
+
+## Functions to start Scotty
+
+```haskell
+-- | Run a scotty application using the warp server.
+scotty :: Port -> ScottyM () -> IO ()
+
+-- | Run a scotty application using the warp server, passing extra options.
+scottyOpts :: Options -> ScottyM () -> IO ()
+
+-- | Run a scotty application using the warp server, passing extra options,
+-- and listening on the provided socket.
+scottySocket :: Options -> Socket -> ScottyM () -> IO ()
+```
+
+## Scotty `Options`
+
+![](./screenshots/scotty.png){class=screenshot}
+
+## `data-default-class` Haskell library
+
+```haskell
+module Data.Default.Class where
+
+-- | A class for types with a default value.
+class Default a where
+
+    -- | The default value for this type.
+    def :: a
+```
+
+## `TypeApplications`
+
+* `{-# LANGUAGE TypeApplications #-}`
+* `def @Web.Scotty.Options`
+
+## `network` Haskell library
+
+```haskell
+module Network.Socket where
+
+fdSocket :: Socket -> CInt
+
+-- | Set the nonblocking flag on Unix.
+setNonBlockIfNeeded :: CInt -> IO ()
 ```
 
 ## `monadic-party/lib/MonadicParty/Socket.hs`
@@ -1047,10 +1171,92 @@ scottyApp =
           |])
 ```
 
+## Another possibility
+
+```haskell
+main :: IO ()
+main = do
+
+    socketsMaybe :: Maybe [Socket] <- getActivatedSockets
+
+    case socketsMaybe of
+
+        Nothing ->
+            Scotty.scotty 8001 scottyApp
+
+        Just [socket] ->
+          do
+            Socket.setNonBlockIfNeeded (Socket.fdSocket socket)
+            Scotty.scottySocket (def @Scotty.Options) socket scottyApp
+
+        Just sockets -> die ("Wrong number of sockets: " ++
+                             show (length sockets))
+```
+
+## `server.nix`
+
+```nix
+let
+    nixos = import <nixpkgs/nixos> {
+        configuration = {
+            imports = [
+                ./modules/bootstrap.nix
+                ./modules/party-scotty.nix
+                ./modules/party-socket.nix
+                ./modules/nginx.nix
+            ];
+            config = {
+                networking.hostName = "monadic-party";
+                nixpkgs.config.allowUnfree = true;
+                users.users.monadic-party = {};
+            };
+        };
+    };
+in
+    nixos.system
+```
+
+
+## `modules/nginx.nix`
+
+```nix
+{ pkgs, ... }:
+{
+    imports = [
+    ];
+    config = {
+
+        networking.firewall.allowedTCPPorts = [ 80 443 ];
+
+        services.nginx = {
+            enable = true;
+
+            recommendedGzipSettings = true;
+            recommendedOptimisation = true;
+            recommendedProxySettings = true;
+            recommendedTlsSettings = true;
+
+            virtualHosts."monadic-party.chris-martin.org" = {
+
+                enableACME = true;
+                addSSL = true;
+
+                locations."/scotty".proxyPass =
+                    "http://localhost:8000";
+
+                locations."/socket".proxyPass =
+                    "http://unix:/run/party-socket.socket";
+
+            };
+        };
+    };
+}
+```
+
 ## Curling a Unix socket
 
 ```
-❮bash❯ curl --unix-socket /run/party-socket dummydomain/socket
+❮bash❯ curl --unix-socket /run/party-socket.socket dummydomain/socket
 hello
 ```
 
@@ -1075,6 +1281,12 @@ We're going to take a side detour here to something I really should have done fr
 
 - `nix-channel --update` changes the nixpkgs expression!
 
+## `NIX_PATH` (2)
+
+- `NIX_PATH`, more precisely, is a colon-separated list where each entry is either
+    - A directory containing Nix channels
+    - `name=path` where `path` is a Nix channel
+
 ## `nixpkgs.nix`
 
 ```nix
@@ -1096,14 +1308,24 @@ We're going to take a side detour here to something I really should have done fr
 main :: IO ()
 main =
   sh $ do
-    nixpkgs <- getNixpkgs
-    setNixPath nixpkgs
+    nixpkgs <- getNixpkgs -- Get the pinned nixpkgs
+    setNixPath nixpkgs    -- Set the NIX_PATH environment variable
 
     server <- getServer   -- Read the server address from a file
     path <- build         -- (1) Build NixOS for our server
     upload server path    -- (2) Upload the build to the server
     activate server path  -- (3) Start running the new version
+```
 
+## `Nixpkgs`
+
+```haskell
+newtype Nixpkgs = Nixpkgs Text
+```
+
+## `getNixpkgs`
+
+```haskell
 getNixpkgs :: Shell Nixpkgs
 getNixpkgs =
   do
@@ -1113,7 +1335,11 @@ getNixpkgs =
   where
     command = "nix-build"
     args = ["nixpkgs.nix", "--no-out-link"]
+```
 
+## `setNixPath`
+
+```haskell
 setNixPath :: Nixpkgs -> Shell ()
 setNixPath (Nixpkgs path) =
     export "NIX_PATH" ("nixpkgs=" <> path)
@@ -1121,18 +1347,54 @@ setNixPath (Nixpkgs path) =
 
 # Logging
 
+## Logging approach
+
+- Write to stdout
+    - Logs will end up in *Journald*
+    - `journalctl -f`
+    - `journalctl -u party-count`
+
+- Keep it simple as possible
+    - But don't let multiple threads write at once
+
 ## A tiny logging framework
 
-```haskell
-data LogHandle = LogHandle (TChan Text)
+* `newLog     :: IO LogHandle`
+* `writeToLog :: LogHandle -> Text -> IO ()`
+* `runLogger  :: LogHandle -> IO a`
+  * (What can we infer from this type?)
 
+## A queue of `Text`
+
+```haskell
+-- stm
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TChan
+    (TChan, newTChanIO, readTChan, writeTChan)
+
+data LogHandle = LogHandle (TChan Text)
+```
+
+## `newLog`
+
+```haskell
 newLog :: IO LogHandle
 newLog =
     LogHandle <$> newTChanIO
+```
 
+## `writeToLog`
+
+```haskell
 writeToLog :: LogHandle -> Text -> IO ()
 writeToLog (LogHandle chan) message =
     atomically (writeTChan chan message)
+```
+
+## `runLogger`
+
+```haskell
+import Control.Monad (forever)
 
 runLogger :: LogHandle -> IO a
 runLogger (LogHandle chan) =
@@ -1141,17 +1403,24 @@ runLogger (LogHandle chan) =
         Data.Text.IO.putStrLn message
 ```
 
+## `async` Haskell library
+
+```haskell
+concurrently_ :: IO a -> IO b -> IO ()
+```
+
 ## Main with a logger
 
 ```haskell
+import Control.Concurrent.Async (concurrently_)
+import qualified System.IO as IO
+
 main :: IO ()
 main = do
-
     IO.hSetBuffering IO.stdout IO.LineBuffering
-
     logHandle <- newLog
+    concurrently_ (runLogger logHandle) runServer
 
-    runConcurrently $
-        Concurrently (runLogger logHandle) *>
-        Concurrently runServer
+runServer :: IO a
+runServer = undefined
 ```
