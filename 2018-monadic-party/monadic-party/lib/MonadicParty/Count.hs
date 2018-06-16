@@ -70,6 +70,32 @@ main = do
         Concurrently (runLogger logHandle) *>
         Concurrently runServer
 
+
+scottyApp :: LogHandle -> TVar Natural -> Scotty.ScottyM ()
+scottyApp logHandle countVar =
+    Scotty.get "/count" (countAction logHandle countVar)
+
+countAction :: LogHandle -> TVar Natural -> Scotty.ActionM ()
+countAction logHandle countVar =
+    do
+        countText :: Text <- Scotty.liftAndCatchIO . atomically $ do
+            previousCount <- readTVar countVar
+            let newCount = previousCount + 1
+            writeTVar countVar newCount
+            (pure . Data.Text.pack . show @Natural) newCount
+
+        Scotty.liftAndCatchIO (writeToLog logHandle countText)
+
+        Scotty.html (Data.Text.Lazy.fromStrict [text|
+            <!doctype html>
+            <html>
+                <head></head>
+                <body>
+                    The count: $countText
+                </body>
+            </html>
+          |])
+
 -----------------  Logging  --------------------
 
 data LogHandle = LogHandle (TChan Text)
@@ -89,26 +115,3 @@ runLogger (LogHandle chan) =
         Data.Text.IO.putStrLn message
 
 ------------------------------------------------
-
-
-scottyApp :: LogHandle -> TVar Natural -> Scotty.ScottyM ()
-scottyApp logHandle countVar =
-    Scotty.get "/count" $ do
-
-        countText <- Scotty.liftAndCatchIO . atomically $ do
-            previousCount <- readTVar countVar
-            let newCount = previousCount + 1
-            writeTVar countVar newCount
-            (pure . Data.Text.pack . show @Natural) newCount
-
-        Scotty.liftAndCatchIO (writeToLog logHandle countText)
-
-        Scotty.html (Data.Text.Lazy.fromStrict [text|
-            <!doctype html>
-            <html>
-                <head></head>
-                <body>
-                    The count: $countText
-                </body>
-            </html>
-          |])
