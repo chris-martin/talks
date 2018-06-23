@@ -1,4 +1,4 @@
-# Servers with Haskell and NixOS
+## Servers with Haskell and NixOS
 
 [Haskell Summer School](https://monadic.party/) in Poznań, Poland
 
