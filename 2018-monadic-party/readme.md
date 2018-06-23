@@ -1,5 +1,3 @@
-## Servers with Haskell and NixOS
-
 [Haskell Summer School](https://monadic.party/) in Poznań, Poland
 
 2018, June 14-15
