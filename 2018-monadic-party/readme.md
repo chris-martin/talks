@@ -8,4 +8,4 @@ Video:
 [Hours 1-2](https://www.youtube.com/watch?v=DQ44q2aIP48),
 [Hours 3-4](https://www.youtube.com/watch?v=11VmVzPPncc)
 
-[Slides](./slides)
+[Slides](./slides/#(1))
