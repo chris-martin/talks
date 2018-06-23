@@ -4,4 +4,4 @@ To run the development slide server:
 nix-shell --pure --run 'run-slides'
 ```
 
-Slides will appear at http://localhost:3000/slides.html
+Slides will appear at http://localhost:3000/index.html

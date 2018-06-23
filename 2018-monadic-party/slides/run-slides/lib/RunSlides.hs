@@ -50,6 +50,6 @@ build = do
     procs "pandoc"
         [ "-s", "-t", "slidy", "--slide-level=2"
         , "-V", "slidy-url=./slidy"
-        , "slides.md", "-o", "slides.html"
+        , "slides.md", "-o", "index.html"
         ] empty
     putStrLn " Done."
