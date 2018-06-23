@@ -1,0 +1,1276 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Chris Martin" />
+  <title>Servers with Haskell and NixOS</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <style type="text/css">
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; position: absolute; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; }
+pre.numberSource a.sourceLine:empty
+  { position: absolute; }
+pre.numberSource a.sourceLine::before
+  { content: attr(data-line-number);
+    position: absolute; left: -5em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" type="text/css" media="screen, projection, print"
+    href="./slidy/styles/slidy.css" />
+  <script src="./slidy/scripts/slidy.js"
+    charset="utf-8" type="text/javascript"></script>
+</head>
+<body>
+<div class="slide titlepage">
+  <h1 class="title">Servers with Haskell and NixOS</h1>
+  <p class="author">
+Chris Martin
+  </p>
+  <p class="date">Monadic Party <img src="./icons/monadic-party.png" style="height:2em" /> 2018 June 14-15</p>
+</div>
+<div id="course-goals" class="slide section level2">
+<h1>Course goals</h1>
+<ul>
+<li><p>Haskell is absolutely good for servers</p></li>
+<li><p>NixOS takes all the pain out of provisioning servers</p></li>
+<li><p>Not wizardry, a little boilerplate gets you started</p></li>
+</ul>
+
+</div>
+<div id="prerequisites" class="slide section level2">
+<h1>Prerequisites</h1>
+<ul>
+<li><p>General Linux familiarity</p></li>
+<li><p>Concepts: What is a process, web server, SSH</p></li>
+<li><p>Reading basic Haskell</p></li>
+</ul>
+
+</div>
+<div id="course-outline" class="slide section level2">
+<h1>Course outline</h1>
+<ol style="list-style-type: decimal">
+<li>What are Nix and NixOS</li>
+<li>Launching and configuring NixOS on EC2</li>
+<li>Deploying by rebuilding NixOS locally</li>
+<li>Building a Haskell project with Nix</li>
+<li>Nixpkgs version pinning</li>
+<li>Defining systemd units in NixOS</li>
+<li>Basic web server with Scotty</li>
+<li>Reverse proxying with nginx</li>
+<li>Systemd socket activation</li>
+<li>Journald and simple logging</li>
+</ol>
+</div>
+<div id="what-we-are-not-going-to-do" class="slide section level2">
+<h1>What we are <em>not</em> going to do</h1>
+<ul>
+<li>We won’t be talking about “serverless architecture”
+<ul>
+<li>I like servers</li>
+</ul></li>
+<li><p>We won’t use Linux containers / Docker</p></li>
+<li><p>We use AWS, but this class is not about AWS</p></li>
+<li><p>Not analyzing performance</p></li>
+<li><p>Not using the Nix 2.0 <code>nix</code> command</p></li>
+</ul>
+
+</div>
+<div id="my-platform-history" class="slide section level2">
+<h1>My platform history</h1>
+<ul>
+<li><p><strong>PHP</strong> (2003–2006) dumb projects</p></li>
+<li><strong>Java</strong> (2006–2014) Georgia Tech Research Institute
+<ul>
+<li>J2EE Servlets</li>
+<li>Tomcat</li>
+</ul></li>
+<li><strong>Python</strong> (2014–2016) <code>https://use.foldapp.com</code>
+<ul>
+<li><img src="./icons/ubuntu.png" style="height:1.4em" /> Ubuntu</li>
+<li><img src="./icons/saltstack.png" style="height:1.4em" /> Salt</li>
+</ul></li>
+<li><strong>Haskell</strong> (2017–now) <code>https://typeclasses.com</code>
+<ul>
+<li><img src="./icons/nixos.png" style="height:1.2em" /> NixOS</li>
+</ul></li>
+</ul>
+</div>
+<div id="nix" class="title-slide slide section level1"><h1>Nix</h1></div><div id="origin" class="slide section level2">
+<h1>Origin</h1>
+<p><em>The Purely Functional Software Deployment Model</em>, Eelco Dolstra, 2006</p>
+<ul>
+<li><blockquote>
+<p>This thesis is about getting computer programs from one machine to another—and having them still work when they get there.</p>
+</blockquote></li>
+<li><blockquote>
+<p>This <em>should</em> be a simple problem. For instance, if the software consists of a set of files, then deployment should be a simple matter of <em>copying</em> those to the target machines.</p>
+</blockquote></li>
+</ul>
+</div><div id="portability-is-tricky" class="slide section level2">
+<h1>Portability is tricky</h1>
+<ul>
+<li>Does your program have dynamically loaded libraries?</li>
+<li>What does it require on <code>PATH</code>?</li>
+<li>What do your dependencies depend on, etc.</li>
+</ul>
+
+</div><div id="the-main-idea" class="slide section level2">
+<h1>The main idea</h1>
+<p><em>The Purely Functional Software Deployment Model</em>, Eelco Dolstra, 2006</p>
+<ul>
+<li><blockquote>
+<p>The main idea of the Nix approach is to store software components in isolation from each other in a central component store, under path names that contain cryptographic hashes of all inputs involved in building the component, such as <code>/nix/store/rwmfbhb2znwp...-firefox1.0.4</code> […] this prevents undeclared dependencies and enables support for side-by-side existence of component versions and variants.</p>
+</blockquote></li>
+<li><blockquote>
+The hash is computed over all inputs, including the following:
+<ul>
+<li>The sources of the components.</li>
+<li>The script that performed the build.</li>
+<li>Any arguments or environment variables passed to the build script.</li>
+<li>All build time dependencies, typically including the compiler, linker, any libraries used at build time, standard Unix tools such as <code>cp</code> and <code>tar</code>, the shell, and so on.</li>
+</ul>
+</blockquote></li>
+</ul>
+</div><div id="gnu-make-vs-nix" class="slide section level2">
+<h1>GNU make vs Nix</h1>
+<table>
+<colgroup>
+<col width="25%" />
+<col width="37%" />
+<col width="37%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Make</th>
+<th>Nix</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Build unit</td>
+<td>Targets</td>
+<td>Derivations</td>
+</tr>
+<tr class="even">
+<td>Build file</td>
+<td>List of targets</td>
+<td>Lazy λ-calculus</td>
+</tr>
+<tr class="odd">
+<td>Basis for rebuilds</td>
+<td>Timestamps of build inputs</td>
+<td>Hashes of build inputs</td>
+</tr>
+<tr class="even">
+<td>Where builds results go</td>
+<td>Where you specify</td>
+<td>In the Nix store (<code>/nix/store/...</code>)</td>
+</tr>
+<tr class="odd">
+<td>How to remove old files</td>
+<td>A target called <code>clean</code></td>
+<td><code>nix-collect-garbage</code></td>
+</tr>
+<tr class="even">
+<td>Composing build files</td>
+<td><code>include</code></td>
+<td><code>import</code></td>
+</tr>
+<tr class="odd">
+<td>External dependencies</td>
+<td>?</td>
+<td><code>nixpkgs</code></td>
+</tr>
+</tbody>
+</table>
+
+</div><div id="example" class="slide section level2">
+<h1>Example</h1>
+<p><code>https://archives.haskell.org/projects.haskell.org/diagrams/gallery/Hilbert.html</code></p>
+<p><img src="./screenshots/hilbert-curve.png" class="screenshot" /></p>
+</div><div id="makefile" class="slide section level2">
+<h1><code>Makefile</code></h1>
+<pre class="make"><code>all: hilbert-curve.png
+
+sourceUrl = https://archives.haskell.org/projects.haskell.org/diagrams/gallery/Hilbert.lhs
+
+hilbert-curve.lhs:
+    wget $(sourceUrl) --output-document $@
+
+hilbert-curve.svg: hilbert-curve.lhs
+    runhaskell --ghc-arg=-XTypeFamilies $&lt; --output $@ --width 250
+
+hilbert-curve.png: hilbert-curve.svg
+    convert $&lt; $@
+
+clean:
+    rm -f *.lhs *.svg *.png
+
+.PHONY: clean</code></pre>
+
+</div><div id="default.nix" class="slide section level2">
+<h1><code>default.nix</code></h1>
+<div class="sourceCode" id="cb2"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="bu">let</span></a>
+<a class="sourceLine" id="cb2-2" data-line-number="2">    <span class="ex">pkgs</span> = import <span class="op">&lt;</span>nixpkgs<span class="op">&gt;</span> <span class="dt">{}</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb2-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb2-4" data-line-number="4">    <span class="ex">src</span> = pkgs.fetchurl {</a>
+<a class="sourceLine" id="cb2-5" data-line-number="5">        <span class="ex">url</span> = https://archives.haskell.org/projects.haskell.org/diagrams/gallery/Hilbert.lhs<span class="kw">;</span></a>
+<a class="sourceLine" id="cb2-6" data-line-number="6">        <span class="ex">sha256</span> = <span class="st">&quot;0bplymiysf4k9vlw2kf5dfzgk1w2r0w5pbr8m24wjk045rml5hqq&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb2-7" data-line-number="7">    };</a>
+<a class="sourceLine" id="cb2-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb2-9" data-line-number="9">    <span class="ex">ghc</span> = pkgs.haskellPackages.ghcWithPackages (p: [ p.diagrams ]);</a>
+<a class="sourceLine" id="cb2-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb2-11" data-line-number="11">    <span class="ex">svg</span> = pkgs.runCommand <span class="st">&quot;hilbert-curve.svg&quot;</span></a>
+<a class="sourceLine" id="cb2-12" data-line-number="12">        <span class="kw">{</span> <span class="ex">buildInputs</span> = [ ghc ]<span class="kw">;</span> <span class="kw">}</span></a>
+<a class="sourceLine" id="cb2-13" data-line-number="13">        <span class="st">&quot;runhaskell --ghc-arg=-XTypeFamilies </span><span class="va">${src}</span><span class="st"> -o </span><span class="va">$out</span><span class="st"> -w 250&quot;</span>;</a>
+<a class="sourceLine" id="cb2-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb2-15" data-line-number="15">    <span class="ex">png</span> = pkgs.runCommand <span class="st">&quot;hilbert-curve.png&quot;</span></a>
+<a class="sourceLine" id="cb2-16" data-line-number="16">        <span class="kw">{</span> <span class="ex">buildInputs</span> = [ pkgs.imagemagick ]<span class="kw">;</span> <span class="kw">}</span></a>
+<a class="sourceLine" id="cb2-17" data-line-number="17">        <span class="st">&quot;convert </span><span class="va">${svg}</span><span class="st"> </span><span class="va">$out</span><span class="st">&quot;</span>;</a>
+<a class="sourceLine" id="cb2-18" data-line-number="18"></a>
+<a class="sourceLine" id="cb2-19" data-line-number="19"><span class="kw">in</span></a>
+<a class="sourceLine" id="cb2-20" data-line-number="20">    <span class="ex">png</span></a></code></pre></div>
+</div><div id="annoyances-with-the-makefile" class="slide section level2">
+<h1>Annoyances with the <code>Makefile</code></h1>
+<ul>
+<li>Make didn’t help us obtain GHC and imagemagick</li>
+<li>Changing the <code>Makefile</code> doesn’t trigger a rebuild</li>
+<li>Make can’t verify that we listed the right dependencies</li>
+<li>We have to write the <code>clean</code> rule ourselves</li>
+</ul>
+</div><div id="why-nix-for-servers" class="slide section level2">
+<h1>Why Nix for servers?</h1>
+<ul>
+<li>Builds are consistent
+<ul>
+<li>Doesn’t depend on what’s in your cache</li>
+<li>If third-party hosted files change, the build will fail</li>
+</ul></li>
+<li>Deploy changes in one step
+<ul>
+<li>Doesn’t matter what’s already running on the server</li>
+<li>Adding/removing/deleting a service happens automatically</li>
+<li>Easy/quick to revert to a previous build</li>
+</ul></li>
+</ul>
+</div><div id="nixos-config-file" class="slide section level2">
+<h1>NixOS config file</h1>
+<ul>
+<li>Conventionally lives at <code>/etc/nixos/configuration.nix</code></li>
+<li>Contains things like:
+<ul>
+<li>Software</li>
+<li>Services + their configuration</li>
+<li>Users</li>
+<li>Host name</li>
+<li>Firewall rules</li>
+<li>Time zone</li>
+<li>Kernel version</li>
+</ul></li>
+</ul>
+</div>
+<div id="aws" class="title-slide slide section level1"><h1>AWS</h1></div><div id="launching-on-ec2" class="slide section level2">
+<h1>Launching on EC2</h1>
+<p><img src="./screenshots/nixos-homepage.png" class="screenshot" /></p>
+
+</div><div id="httpsnixos.orgnixosdownload.html" class="slide section level2">
+<h1><code>https://nixos.org/nixos/download.html</code></h1>
+<p><img src="./screenshots/nixos-amis.png" class="screenshot" /></p>
+
+</div><div id="step-2-instance-type" class="slide section level2">
+<h1>Step 2 – Instance type</h1>
+<p><img src="./screenshots/ec2-step2.png" class="screenshot" /></p>
+
+</div><div id="were-going-very-minimal-here" class="slide section level2">
+<h1>We’re going very minimal here</h1>
+<blockquote>
+<p>WHAT 1GB of mem is good enough? 🤔 skepticalface is skeptical.</p>
+</blockquote>
+
+</div><div id="step-3-more-configuration" class="slide section level2">
+<h1>Step 3 – More configuration</h1>
+<p><img src="./screenshots/ec2-step3.png" class="screenshot" /></p>
+
+</div><div id="default-configuration.nix-for-ec2-instances" class="slide section level2">
+<h1>Default <code>configuration.nix</code> for EC2 instances</h1>
+<div class="sourceCode" id="cb3"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="kw">{</span></a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">    <span class="ex">imports</span> = [ <span class="op">&lt;</span>nixpkgs/nixos/modules/virtualisation/amazon-image.nix<span class="op">&gt;</span> ]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb3-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb3-4" data-line-number="4">    <span class="ex">ec2.hvm</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb3-5" data-line-number="5"><span class="kw">}</span></a></code></pre></div>
+</div><div id="httpsnixos.orgnixosoptions.html" class="slide section level2">
+<h1><code>https://nixos.org/nixos/options.html</code></h1>
+<p><img src="./screenshots/nixos-options.png" class="screenshot" /></p>
+</div><div id="bootstrap.nix" class="slide section level2">
+<h1><code>bootstrap.nix</code></h1>
+
+<div class="sourceCode" id="cb4"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="kw">{</span></a>
+<a class="sourceLine" id="cb4-2" data-line-number="2">    <span class="ex">imports</span> = [ <span class="op">&lt;</span>nixpkgs/nixos/modules/virtualisation/amazon-image.nix<span class="op">&gt;</span> ]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">    <span class="ex">config</span> = {</a>
+<a class="sourceLine" id="cb4-5" data-line-number="5">        <span class="ex">ec2.hvm</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb4-7" data-line-number="7">        <span class="co"># Run SSH on a weird port</span></a>
+<a class="sourceLine" id="cb4-8" data-line-number="8">        <span class="ex">services.openssh.ports</span> = [ 46861 ]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-9" data-line-number="9">        <span class="ex">networking.firewall.allowedTCPPorts</span> = [ 46861 ]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb4-11" data-line-number="11">        <span class="co"># Don&#39;t allow anyone to SSH using a password</span></a>
+<a class="sourceLine" id="cb4-12" data-line-number="12">        <span class="ex">services.openssh.passwordAuthentication</span> = false<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-13" data-line-number="13"></a>
+<a class="sourceLine" id="cb4-14" data-line-number="14">        <span class="co"># Let admins sudo without entering a password</span></a>
+<a class="sourceLine" id="cb4-15" data-line-number="15">        <span class="ex">security.sudo.wheelNeedsPassword</span> = false<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-16" data-line-number="16"></a>
+<a class="sourceLine" id="cb4-17" data-line-number="17">        <span class="co"># Let admins upload unsigned Nix packages</span></a>
+<a class="sourceLine" id="cb4-18" data-line-number="18">        <span class="ex">nix.trustedUsers</span> = [ <span class="st">&quot;@wheel&quot;</span> ]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-19" data-line-number="19"></a>
+<a class="sourceLine" id="cb4-20" data-line-number="20">        <span class="ex">users.users.chris</span> = {</a>
+<a class="sourceLine" id="cb4-21" data-line-number="21">            <span class="ex">isNormalUser</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-22" data-line-number="22">            <span class="ex">extraGroups</span> = [ <span class="st">&quot;wheel&quot;</span> ]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-23" data-line-number="23"></a>
+<a class="sourceLine" id="cb4-24" data-line-number="24">            <span class="ex">openssh.authorizedKeys.keys</span> = [</a>
+<a class="sourceLine" id="cb4-25" data-line-number="25">                <span class="st">&quot;ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDFJ4UYsEh+JZQGCMdbNrKfjH1F3rwKBRewwgaehwnijBADYSJ8iwDZji09vVfCxSQSMjZJS54mEBtjcOBOpM7+mR585wI6jhsfdsNqNwzJdxV47Bi4jAkg7XlWf9IYv7EUhRzsKGdoSqefh/7bN6MPcJQ9ccHKqBxtmGJ6eHfgLmgnb8+ozwDlwQKz5QDtdEnt8TUqucUB4AOyReBV7GRnwkTyGCForb5nhTftuVi7GO1qApJKBIpYlC1gbuCWDX9CIl7IzfAMyng6u6Ty9x31ZWKA0sJzRIX5cw3e8Ct7sWzZB3O/2FOwjyYadqTRQdR472Dz/f6mqqIl1ioxzfXRfh33bREg2opLc6bnYaWTXY6aAc5/wUbC7z4CTKBGZJHxY5mrRSlpQ2Rn8EvgyyxgxokLdTZqoiKw/tSmE9Mlle5JGh+m8agGe41dszZxBf41j/ORE+N5p0k02fvUWuG0PL3aFE77qUbOgxxXOYMtBV0YiJPzeBXDGrkW1wqKC2voJ6PuCZWOHaLxDqkUDgAMYyGMKoj5C53OZneVeSMgZG+/lxygAduyBx/RfQYrt4WsPfPnhl95Kxx8PTYuFfLXmcMNMhZ7rYW+Thvo40W+VjiqTUSCxLHr16SFSOj2mGl0A29VPPHA3H+ckprCo8pldPo3AYrwkV/zHlyLjuEQfQ== renzo-1&quot;</span></a>
+<a class="sourceLine" id="cb4-26" data-line-number="26">            ];</a>
+<a class="sourceLine" id="cb4-27" data-line-number="27">        <span class="kw">}</span>;</a>
+<a class="sourceLine" id="cb4-28" data-line-number="28"></a>
+<a class="sourceLine" id="cb4-29" data-line-number="29">        <span class="ex">users.users.julie</span> = {</a>
+<a class="sourceLine" id="cb4-30" data-line-number="30">            <span class="ex">isNormalUser</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-31" data-line-number="31">            <span class="ex">extraGroups</span> = [ <span class="st">&quot;wheel&quot;</span> ]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb4-32" data-line-number="32"></a>
+<a class="sourceLine" id="cb4-33" data-line-number="33">            <span class="ex">openssh.authorizedKeys.keys</span> = [</a>
+<a class="sourceLine" id="cb4-34" data-line-number="34">                <span class="st">&quot;ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDUA5QiRaMriKQrvA1H74UsJcnGieAcHYrHp27KBZjOhhKvinTkNyErY5JNFbgrCh3oC+6HeMSUOp+5qb2/hF0aO6kdYbGnYB3BchrbsPYFDccqW9eQONXdvYsa4mavfLzHIvXktkxVsd71CBRXqVFxxolYps99iJvFfhmgnn9Iz+zUIuOSRCPQ/Bcxbh3+fZHD2wlPpOZ352V3/utR6n6nlhK5W1Gq/mp5dmE32zCEOEse85xXQNxJpjdhIDZbu8PnNo2LuYIfRBFzIj/Gh6MIHJU3gQskt8MvKA+POdseflPLznxoDWYT3FqBO+agObr3FGnlnwpi1g9ym+U8T6SNFGUwR7cX5VkegLNSl7FTLMtaXoqUTKhBQH+ZIpNwlyepYnFo1BHR3IgsFDSaD/zLUjesBQIw6j+mtDCK9P3EnUcXo5v04OuGoyqTtAF4TTAz2kuC8ZsCs0cQEZRIoXqVIRcvPmlFr208o0SeGakCHVxIj6VnrQ+aHisVwuGAkq+Kb5mwE6b0xvuFGHo+bqHIUePymWQihbh0pZpYeSaJTLb2YG17HmE2rUFeO66CADmIMi2EWEI0xisT/e9FoqDcMnG/Z5sLBBDkerXwyfLA63zAkF0P3LtWX1Q0vYFhCn+VtMwE56qW/Z0sDdNiVwxn/a1GGh12gqXkNHBEePYjoQ== doriangray&quot;</span></a>
+<a class="sourceLine" id="cb4-35" data-line-number="35">            ];</a>
+<a class="sourceLine" id="cb4-36" data-line-number="36">        };</a>
+<a class="sourceLine" id="cb4-37" data-line-number="37">    };</a>
+<a class="sourceLine" id="cb4-38" data-line-number="38">}</a></code></pre></div>
+</div><div id="step-4-storage" class="slide section level2">
+<h1>Step 4 – Storage</h1>
+<p><img src="./screenshots/ec2-step4.png" class="screenshot" /></p>
+
+</div><div id="step-5-tags" class="slide section level2">
+<h1>Step 5 – Tags</h1>
+<p><img src="./screenshots/ec2-step5.png" class="screenshot" /></p>
+
+</div><div id="step-6-security-group" class="slide section level2">
+<h1>Step 6 – Security group</h1>
+<p><img src="./screenshots/ec2-step6.png" class="screenshot" /></p>
+
+</div><div id="step-7-review" class="slide section level2">
+<h1>Step 7 – Review</h1>
+<p><img src="./screenshots/ec2-step7.png" class="screenshot" /></p>
+
+</div><div id="launching-via-command-line" class="slide section level2">
+<h1>Launching via command-line</h1>
+<pre><code>❮bash❯ aws ec2 run-instances [... a bunch of args ...]</code></pre>
+</div>
+<div id="deploy-strategy" class="title-slide slide section level1"><h1>Deploy strategy</h1></div><div id="deploy-strategy-1" class="slide section level2">
+<h1>Deploy strategy</h1>
+
+<ul>
+<li><p>NixOS is a Nix package</p></li>
+<li>Nix packages are easy to copy between machines
+<ul>
+<li>(of the same platform; sorry macOS users)</li>
+</ul></li>
+<li><p>Build NixOS locally, upload to the server</p></li>
+</ul>
+</div><div id="deploy-strategy-2" class="slide section level2">
+<h1>Deploy strategy</h1>
+<p><img src="./diagrams/deploy-strategy.png" class="diagram" /></p>
+
+</div><div id="server.nix" class="slide section level2">
+<h1><code>server.nix</code></h1>
+
+<div class="sourceCode" id="cb6"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="bu">let</span></a>
+<a class="sourceLine" id="cb6-2" data-line-number="2">    <span class="ex">nixos</span> = import <span class="op">&lt;</span>nixpkgs/nixos<span class="op">&gt;</span> {</a>
+<a class="sourceLine" id="cb6-3" data-line-number="3">        <span class="ex">configuration</span> = {</a>
+<a class="sourceLine" id="cb6-4" data-line-number="4">            <span class="ex">imports</span> = [</a>
+<a class="sourceLine" id="cb6-5" data-line-number="5">                <span class="ex">./modules/bootstrap.nix</span></a>
+<a class="sourceLine" id="cb6-6" data-line-number="6">            ];</a>
+<a class="sourceLine" id="cb6-7" data-line-number="7">            <span class="ex">config</span> = {</a>
+<a class="sourceLine" id="cb6-8" data-line-number="8">            };</a>
+<a class="sourceLine" id="cb6-9" data-line-number="9">        };</a>
+<a class="sourceLine" id="cb6-10" data-line-number="10">    };</a>
+<a class="sourceLine" id="cb6-11" data-line-number="11"><span class="kw">in</span></a>
+<a class="sourceLine" id="cb6-12" data-line-number="12">    <span class="ex">nixos.system</span></a></code></pre></div>
+</div><div id="building-nixos-locally" class="slide section level2">
+<h1>Building NixOS locally</h1>
+<pre><code>❮bash❯ nix-build server.nix
+[... a bunch of build output ...]
+/nix/store/bbcbh0vv64v5bgdhdd4a8fw3p438iiam-nixos-system-unnamed-18.03.132618.0f73fef53a9
+
+❮bash❯ ls -lh
+ls -lh
+total 12K
+-rw-r--r-- 1 chris users 2.2K Jun  7 02:30 bootstrap.nix
+lrwxrwxrwx 1 chris users   89 Jun  7 02:35 result -&gt; /nix/store/pvf3l9x8m2fnw7l07g1yxw1iilj3m2rp-nixos-system-unnamed-18.03.132618.0f73fef53a9
+-rw-r--r-- 1 chris users  176 Jun  7 02:30 server.nix</code></pre>
+
+</div><div id="the-build-result" class="slide section level2">
+<h1>The build result</h1>
+
+<pre><code>❮bash❯ ls -lh result/
+total 60K
+dr-xr-xr-x 2 root root 4.0K Dec 31  1969 bin
+dr-xr-xr-x 2 root root 4.0K Dec 31  1969 fine-tune
+-r-xr-xr-x 1 root root  13K Dec 31  1969 activate
+lrwxrwxrwx 1 root root   91 Dec 31  1969 append-initrd-secrets -&gt; /nix/store/m2jf41zpw52i10j01p4wij6j2h22721j-append-initrd-secrets/bin/append-initrd-secrets
+-r--r--r-- 1 root root    0 Dec 31  1969 configuration-name
+lrwxrwxrwx 1 root root   51 Dec 31  1969 etc -&gt; /nix/store/iwpgvdg2i4vv6a0vd20d70425s0rifdh-etc/etc
+-r--r--r-- 1 root root    0 Dec 31  1969 extra-dependencies
+lrwxrwxrwx 1 root root   65 Dec 31  1969 firmware -&gt; /nix/store/grzr4r1ajmnjjnq049r719jbj2p8zbcp-firmware/lib/firmware
+-r-xr-xr-x 1 root root 4.9K Dec 31  1969 init
+-r--r--r-- 1 root root    9 Dec 31  1969 init-interface-version
+lrwxrwxrwx 1 root root   57 Dec 31  1969 initrd -&gt; /nix/store/bnqw7sxz3pnakni5hmj22dqrqvjbbq1m-initrd/initrd
+lrwxrwxrwx 1 root root   65 Dec 31  1969 kernel -&gt; /nix/store/y0jcw44kw1962bdfnsayz1r6jsgz2sqj-linux-4.14.44/bzImage
+lrwxrwxrwx 1 root root   58 Dec 31  1969 kernel-modules -&gt; /nix/store/yw9zkbwkb76ypb0gvvakg0lkv1zirqg7-kernel-modules
+-r--r--r-- 1 root root   51 Dec 31  1969 kernel-params
+-r--r--r-- 1 root root   24 Dec 31  1969 nixos-version
+lrwxrwxrwx 1 root root   55 Dec 31  1969 sw -&gt; /nix/store/j85qcbjfwmis0c75qwbvxhirlj02kjmw-system-path
+-r--r--r-- 1 root root   12 Dec 31  1969 system
+lrwxrwxrwx 1 root root   55 Dec 31  1969 systemd -&gt; /nix/store/cya0k4g78bd518wzgqghkk6srlvl2jgv-systemd-237</code></pre>
+</div>
+<div id="deploy.hs" class="title-slide slide section level1"><h1><code>deploy.hs</code></h1></div><div id="standard-boilerplate" class="slide section level2">
+<h1>Standard boilerplate</h1>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" data-line-number="1"><span class="ot">#! /usr/bin/env stack</span></a>
+<a class="sourceLine" id="cb9-2" data-line-number="2"><span class="co">-- stack script --resolver lts-11.8 --no-nix-pure</span></a>
+<a class="sourceLine" id="cb9-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb9-4" data-line-number="4"><span class="ot">{-# LANGUAGE OverloadedStrings #-}</span></a>
+<a class="sourceLine" id="cb9-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb9-6" data-line-number="6"><span class="kw">import</span> <span class="dt">Turtle</span></a>
+<a class="sourceLine" id="cb9-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb9-8" data-line-number="8"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb9-9" data-line-number="9">main <span class="fu">=</span> <span class="fu">...</span></a></code></pre></div>
+
+</div><div id="main" class="slide section level2">
+<h1><code>main</code></h1>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" data-line-number="1"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb10-2" data-line-number="2">main <span class="fu">=</span></a>
+<a class="sourceLine" id="cb10-3" data-line-number="3">  sh <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb10-4" data-line-number="4">    server <span class="ot">&lt;-</span> getServer   <span class="co">-- Read the server address from a file</span></a>
+<a class="sourceLine" id="cb10-5" data-line-number="5">    path <span class="ot">&lt;-</span> build         <span class="co">-- (1) Build NixOS for our server</span></a>
+<a class="sourceLine" id="cb10-6" data-line-number="6">    upload server path    <span class="co">-- (2) Upload the build to the server</span></a>
+<a class="sourceLine" id="cb10-7" data-line-number="7">    activate server path  <span class="co">-- (3) Start running the new version</span></a></code></pre></div>
+<p><img src="./diagrams/deploy-strategy.png" style="width:30em" /></p>
+
+</div><div id="types" class="slide section level2">
+<h1>Types</h1>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" data-line-number="1"><span class="co">-- The path of the NixOS build that we&#39;re deploying, e.g.</span></a>
+<a class="sourceLine" id="cb11-2" data-line-number="2"><span class="co">-- &quot;/nix/store/bbcbh0vv64v5bgdhdd4a8fw3p438iiam-nixos-system-unnamed-18.03.132618.0f73fef53a9&quot;</span></a>
+<a class="sourceLine" id="cb11-3" data-line-number="3"><span class="kw">newtype</span> <span class="dt">NixOS</span> <span class="fu">=</span> <span class="dt">NixOS</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb11-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb11-5" data-line-number="5"><span class="co">-- The address of the server to which we&#39;re deploying, e.g. &quot;54.175.33.139&quot;</span></a>
+<a class="sourceLine" id="cb11-6" data-line-number="6"><span class="kw">newtype</span> <span class="dt">Server</span> <span class="fu">=</span> <span class="dt">Server</span> <span class="dt">Text</span></a></code></pre></div>
+</div><div id="getserver" class="slide section level2">
+<h1><code>getServer</code></h1>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" data-line-number="1"><span class="co">-- Read the server address from a file.</span></a>
+<a class="sourceLine" id="cb12-2" data-line-number="2"><span class="ot">getServer ::</span> <span class="dt">Shell</span> <span class="dt">Server</span></a>
+<a class="sourceLine" id="cb12-3" data-line-number="3">getServer <span class="fu">=</span></a>
+<a class="sourceLine" id="cb12-4" data-line-number="4">  <span class="kw">do</span></a>
+<a class="sourceLine" id="cb12-5" data-line-number="5">    line <span class="ot">&lt;-</span> single (input <span class="st">&quot;server-address.txt&quot;</span>)</a>
+<a class="sourceLine" id="cb12-6" data-line-number="6">    return (<span class="dt">Server</span> (lineToText line))</a></code></pre></div>
+
+</div><div id="build" class="slide section level2">
+<h1><code>build</code></h1>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" data-line-number="1"><span class="co">-- Build NixOS for our server.</span></a>
+<a class="sourceLine" id="cb13-2" data-line-number="2"><span class="ot">build ::</span> <span class="dt">Shell</span> <span class="dt">NixOS</span></a>
+<a class="sourceLine" id="cb13-3" data-line-number="3">build <span class="fu">=</span></a>
+<a class="sourceLine" id="cb13-4" data-line-number="4">  <span class="kw">do</span></a>
+<a class="sourceLine" id="cb13-5" data-line-number="5">    line <span class="ot">&lt;-</span> single (inproc command args empty)</a>
+<a class="sourceLine" id="cb13-6" data-line-number="6">    return (<span class="dt">NixOS</span> (lineToText line))</a>
+<a class="sourceLine" id="cb13-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb13-8" data-line-number="8">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb13-9" data-line-number="9">    command <span class="fu">=</span> <span class="st">&quot;nix-build&quot;</span></a>
+<a class="sourceLine" id="cb13-10" data-line-number="10">    args <span class="fu">=</span> [<span class="st">&quot;server.nix&quot;</span>, <span class="st">&quot;--no-out-link&quot;</span>]</a></code></pre></div>
+
+</div><div id="upload" class="slide section level2">
+<h1><code>upload</code></h1>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb14-1" data-line-number="1"><span class="co">-- Upload the build to the server.</span></a>
+<a class="sourceLine" id="cb14-2" data-line-number="2"><span class="ot">upload ::</span> <span class="dt">Server</span> <span class="ot">-&gt;</span> <span class="dt">NixOS</span> <span class="ot">-&gt;</span> <span class="dt">Shell</span> ()</a>
+<a class="sourceLine" id="cb14-3" data-line-number="3">upload (<span class="dt">Server</span> server) (<span class="dt">NixOS</span> path) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb14-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb14-5" data-line-number="5">    procs command args empty</a>
+<a class="sourceLine" id="cb14-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb14-7" data-line-number="7">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb14-8" data-line-number="8">    command <span class="fu">=</span> <span class="st">&quot;nix-copy-closure&quot;</span></a>
+<a class="sourceLine" id="cb14-9" data-line-number="9">    args <span class="fu">=</span> [<span class="st">&quot;--use-substitutes&quot;</span>, server, path]</a></code></pre></div>
+
+</div><div id="activate" class="slide section level2">
+<h1><code>activate</code></h1>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb15-1" data-line-number="1"><span class="ot">{-# LANGUAGE QuasiQuotes #-}</span></a>
+<a class="sourceLine" id="cb15-2" data-line-number="2"><span class="kw">import</span> <span class="dt">NeatInterpolation</span> (text)</a>
+<a class="sourceLine" id="cb15-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb15-4" data-line-number="4"><span class="co">-- Start running the new version of NixOS on the server.</span></a>
+<a class="sourceLine" id="cb15-5" data-line-number="5"><span class="ot">activate ::</span> <span class="dt">Server</span> <span class="ot">-&gt;</span> <span class="dt">NixOS</span> <span class="ot">-&gt;</span> <span class="dt">Shell</span> ()</a>
+<a class="sourceLine" id="cb15-6" data-line-number="6">activate (<span class="dt">Server</span> server) (<span class="dt">NixOS</span> path) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb15-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb15-8" data-line-number="8">    procs command args empty</a>
+<a class="sourceLine" id="cb15-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb15-10" data-line-number="10">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb15-11" data-line-number="11">    command <span class="fu">=</span> <span class="st">&quot;ssh&quot;</span></a>
+<a class="sourceLine" id="cb15-12" data-line-number="12">    args <span class="fu">=</span> [server, remoteCommand]</a>
+<a class="sourceLine" id="cb15-13" data-line-number="13">    profile <span class="fu">=</span> <span class="st">&quot;/nix/var/nix/profiles/system&quot;</span></a>
+<a class="sourceLine" id="cb15-14" data-line-number="14">    remoteCommand <span class="fu">=</span> [text|</a>
+<a class="sourceLine" id="cb15-15" data-line-number="15">        nix-env --profile $profile --set $path</a>
+<a class="sourceLine" id="cb15-16" data-line-number="16">        $profile/bin/switch-to-configuration switch</a>
+<a class="sourceLine" id="cb15-17" data-line-number="17">      |]</a></code></pre></div>
+</div><div id="running-the-deploy-script" class="slide section level2">
+<h1>Running the deploy script</h1>
+<pre><code>❮bash❯ ./deploy.hs
+[... a bunch of build output ...]
+updating GRUB 2 menu...
+activating the configuration...
+setting up /etc...
+setting up tmpfiles</code></pre>
+</div>
+<div id="haskell-project-structure" class="title-slide slide section level1"><h1>Haskell project structure</h1></div><div id="haskell-project-structure-1" class="slide section level2">
+<h1>Haskell project structure</h1>
+<ul>
+<li>What we deploy should be compiled as a Nix package
+<ul>
+<li><code>default.nix</code></li>
+<li>Any change to the source causes a new rebuild from scratch</li>
+</ul></li>
+<li>But we want to use normal tools in development
+<ul>
+<li><code>shell.nix</code></li>
+<li>Incremental compiles of only modules that change</li>
+<li>Use tools like hlint, stylish-haskell, ghcid</li>
+</ul></li>
+<li><pre><code>monadic-party
+├── default.nix
+├── ghc-version.nix
+├── monadic-party.cabal
+├── shell.nix
+├── app
+│   └── party-server.hs
+└── lib
+    └── PartyServer.hs</code></pre></li>
+</ul>
+
+</div><div id="monadic-partyghc-version.nix" class="slide section level2">
+<h1><code>monadic-party/ghc-version.nix</code></h1>
+<div class="sourceCode" id="cb18"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb18-1" data-line-number="1"><span class="st">&quot;ghc822&quot;</span></a></code></pre></div>
+</div><div id="monadic-partydefault.nix" class="slide section level2">
+<h1><code>monadic-party/default.nix</code></h1>
+<div class="sourceCode" id="cb19"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb19-1" data-line-number="1"><span class="kw">{</span> <span class="ex">pkgs</span> <span class="kw">}</span>:</a>
+<a class="sourceLine" id="cb19-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb19-3" data-line-number="3"><span class="bu">let</span></a>
+<a class="sourceLine" id="cb19-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb19-5" data-line-number="5">    <span class="ex">ghc</span> = pkgs.haskell.packages.<span class="va">${import</span><span class="er"> .</span><span class="va">/</span>ghc-version.nix<span class="va">}</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb19-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb19-7" data-line-number="7">    <span class="ex">developPackage</span> =</a>
+<a class="sourceLine" id="cb19-8" data-line-number="8">      <span class="kw">{</span> <span class="ex">root</span></a>
+<a class="sourceLine" id="cb19-9" data-line-number="9">      , <span class="ex">source-overrides</span> ? <span class="dt">{}</span></a>
+<a class="sourceLine" id="cb19-10" data-line-number="10">      , <span class="ex">overrides</span> ? self: super: <span class="dt">{}</span></a>
+<a class="sourceLine" id="cb19-11" data-line-number="11">      <span class="kw">}</span>:</a>
+<a class="sourceLine" id="cb19-12" data-line-number="12">      <span class="bu">let</span></a>
+<a class="sourceLine" id="cb19-13" data-line-number="13">          <span class="ex">extensions</span> = pkgs.lib.composeExtensions</a>
+<a class="sourceLine" id="cb19-14" data-line-number="14">              <span class="kw">(</span><span class="ex">ghc.packageSourceOverrides</span> source-overrides<span class="kw">)</span></a>
+<a class="sourceLine" id="cb19-15" data-line-number="15">              <span class="ex">overrides</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb19-16" data-line-number="16"></a>
+<a class="sourceLine" id="cb19-17" data-line-number="17">          <span class="ex">ghc</span><span class="st">&#39; = ghc.extend extensions;</span></a>
+<a class="sourceLine" id="cb19-18" data-line-number="18"></a>
+<a class="sourceLine" id="cb19-19" data-line-number="19"><span class="st">          package = ghc&#39;</span>.callCabal2nix (builtins.baseNameOf root) <span class="ex">root</span> <span class="dt">{}</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb19-20" data-line-number="20"></a>
+<a class="sourceLine" id="cb19-21" data-line-number="21">      <span class="kw">in</span></a>
+<a class="sourceLine" id="cb19-22" data-line-number="22">          <span class="ex">pkgs.haskell.lib.overrideCabal</span> package (drv: {</a>
+<a class="sourceLine" id="cb19-23" data-line-number="23">              <span class="ex">enableSharedExecutables</span> = false<span class="kw">;</span></a>
+<a class="sourceLine" id="cb19-24" data-line-number="24">              <span class="ex">isLibrary</span> = false<span class="kw">;</span></a>
+<a class="sourceLine" id="cb19-25" data-line-number="25">              <span class="ex">doHaddock</span> = false<span class="kw">;</span></a>
+<a class="sourceLine" id="cb19-26" data-line-number="26">              <span class="ex">postFixup</span> = <span class="st">&quot;rm -rf </span><span class="va">$out</span><span class="st">/lib </span><span class="va">$out</span><span class="st">/nix-support </span><span class="va">$out</span><span class="st">/share/doc&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb19-27" data-line-number="27">          });</a>
+<a class="sourceLine" id="cb19-28" data-line-number="28"></a>
+<a class="sourceLine" id="cb19-29" data-line-number="29"><span class="kw">in</span></a>
+<a class="sourceLine" id="cb19-30" data-line-number="30"></a>
+<a class="sourceLine" id="cb19-31" data-line-number="31"><span class="ex">developPackage</span> {</a>
+<a class="sourceLine" id="cb19-32" data-line-number="32"></a>
+<a class="sourceLine" id="cb19-33" data-line-number="33">  <span class="ex">root</span> = ./.<span class="kw">;</span></a>
+<a class="sourceLine" id="cb19-34" data-line-number="34"></a>
+<a class="sourceLine" id="cb19-35" data-line-number="35">  <span class="ex">source-overrides</span> = {</a>
+<a class="sourceLine" id="cb19-36" data-line-number="36"></a>
+<a class="sourceLine" id="cb19-37" data-line-number="37">    <span class="co"># Any specific Haskell package versions you need to pin go here, e.g.:</span></a>
+<a class="sourceLine" id="cb19-38" data-line-number="38">    <span class="co"># scotty = &quot;0.11.1&quot;;</span></a>
+<a class="sourceLine" id="cb19-39" data-line-number="39"></a>
+<a class="sourceLine" id="cb19-40" data-line-number="40">  };</a>
+<a class="sourceLine" id="cb19-41" data-line-number="41"></a>
+<a class="sourceLine" id="cb19-42" data-line-number="42">}</a></code></pre></div>
+</div><div id="monadic-partyshell.nix-basic" class="slide section level2">
+<h1><code>monadic-party/shell.nix</code> (basic)</h1>
+<div class="sourceCode" id="cb20"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb20-1" data-line-number="1"><span class="bu">let</span></a>
+<a class="sourceLine" id="cb20-2" data-line-number="2">    <span class="ex">pkgs</span> = import <span class="op">&lt;</span>nixpkgs<span class="op">&gt;</span> { config.allowUnfree = true<span class="kw">;</span> };</a>
+<a class="sourceLine" id="cb20-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb20-4" data-line-number="4">    <span class="ex">monadic-party</span> = import ./default.nix { inherit pkgs<span class="kw">;</span> };</a>
+<a class="sourceLine" id="cb20-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb20-6" data-line-number="6"><span class="kw">in</span></a>
+<a class="sourceLine" id="cb20-7" data-line-number="7">    <span class="ex">monadic-party</span></a></code></pre></div>
+</div><div id="monadic-partyshell.nix-with-dev-tools" class="slide section level2">
+<h1><code>monadic-party/shell.nix</code> (with dev tools)</h1>
+<div class="sourceCode" id="cb21"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb21-1" data-line-number="1"><span class="bu">let</span></a>
+<a class="sourceLine" id="cb21-2" data-line-number="2">    <span class="ex">pkgs</span> = import <span class="op">&lt;</span>nixpkgs<span class="op">&gt;</span> { config.allowUnfree = true<span class="kw">;</span> };</a>
+<a class="sourceLine" id="cb21-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb21-4" data-line-number="4">    <span class="ex">monadic-party</span> = import ./default.nix { inherit pkgs<span class="kw">;</span> };</a>
+<a class="sourceLine" id="cb21-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb21-6" data-line-number="6">    <span class="ex">ghc</span> = pkgs.haskell.packages.<span class="va">${import</span><span class="er"> .</span><span class="va">/</span>ghc-version.nix<span class="va">}</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb21-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb21-8" data-line-number="8">    <span class="ex">cabal</span> = ghc.cabal-install<span class="kw">;</span></a>
+<a class="sourceLine" id="cb21-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb21-10" data-line-number="10">    <span class="ex">party-ghci</span> = pkgs.writeScriptBin <span class="st">&quot;party-ghci&quot;</span></a>
+<a class="sourceLine" id="cb21-11" data-line-number="11">        <span class="st">&#39;&#39;</span></a>
+<a class="sourceLine" id="cb21-12" data-line-number="12">            <span class="va">${cabal}</span><span class="ex">/bin/cabal</span> new-repl <span class="st">&quot;</span><span class="va">$@</span><span class="st">&quot;</span></a>
+<a class="sourceLine" id="cb21-13" data-line-number="13">        <span class="st">&#39;&#39;</span>;</a>
+<a class="sourceLine" id="cb21-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb21-15" data-line-number="15">    <span class="ex">party-ghcid</span> = pkgs.writeScriptBin <span class="st">&quot;party-ghcid&quot;</span></a>
+<a class="sourceLine" id="cb21-16" data-line-number="16">        <span class="st">&#39;&#39;</span></a>
+<a class="sourceLine" id="cb21-17" data-line-number="17">            <span class="va">${ghc</span><span class="er">.ghcid</span><span class="va">}</span><span class="ex">/bin/ghcid</span> --command <span class="st">&quot;</span><span class="va">${cabal}</span><span class="st">/bin/cabal new-repl&quot;</span> <span class="st">&quot;</span><span class="va">$@</span><span class="st">&quot;</span></a>
+<a class="sourceLine" id="cb21-18" data-line-number="18">        <span class="st">&#39;&#39;</span>;</a>
+<a class="sourceLine" id="cb21-19" data-line-number="19"></a>
+<a class="sourceLine" id="cb21-20" data-line-number="20">    <span class="ex">devTools</span> = [</a>
+<a class="sourceLine" id="cb21-21" data-line-number="21">        <span class="ex">party-ghci</span></a>
+<a class="sourceLine" id="cb21-22" data-line-number="22">        <span class="ex">party-ghcid</span></a>
+<a class="sourceLine" id="cb21-23" data-line-number="23">    ];</a>
+<a class="sourceLine" id="cb21-24" data-line-number="24"></a>
+<a class="sourceLine" id="cb21-25" data-line-number="25"><span class="kw">in</span></a>
+<a class="sourceLine" id="cb21-26" data-line-number="26">    <span class="ex">monadic-party.env.overrideAttrs</span> (attrs: {</a>
+<a class="sourceLine" id="cb21-27" data-line-number="27">        <span class="ex">buildInputs</span> = attrs.buildInputs ++ devTools<span class="kw">;</span></a>
+<a class="sourceLine" id="cb21-28" data-line-number="28">    })</a></code></pre></div>
+</div><div id="using-our-dev-tools" class="slide section level2">
+<h1>Using our dev tools</h1>
+<pre><code>❮bash❯ nix-shell --pure --run &#39;party-ghci&#39;
+In order, the following will be built (use -v for more details):
+ - monadic-party-0 (lib) (first run)
+Preprocessing library for monadic-party-0..
+GHCi, version 8.2.2: http://www.haskell.org/ghc/  :? for help
+Loaded GHCi configuration from /home/chris/.ghc/ghci.conf
+[1 of 1] Compiling PartyServer      ( lib/PartyServer.hs, interpreted )
+Ok, one module loaded.
+
+λ&gt;</code></pre>
+</div><div id="monadic-partymonadic-party.cabal" class="slide section level2">
+<h1><code>monadic-party/monadic-party.cabal</code></h1>
+<pre class="cabal"><code>name: monadic-party
+version: 0
+
+cabal-version: &gt;= 1.10
+build-type: Simple
+
+library
+    hs-source-dirs: lib
+
+    exposed-modules:
+        MonadicParty.Scotty
+
+    build-depends:
+        base
+      , neat-interpolation
+      , scotty
+      , text
+
+    ghc-options: -Wall
+    default-language: Haskell2010
+
+executable party-scotty
+    hs-source-dirs: app
+    main-is: party-scotty.hs
+
+    build-depends:
+        base
+      , monadic-party
+
+    ghc-options: -Wall
+    default-language: Haskell2010</code></pre>
+
+</div>
+<div id="web-server" class="title-slide slide section level1"><h1>Web server</h1></div><div id="haskell-libraries-for-web-servers" class="slide section level2">
+<h1>Haskell libraries for web servers</h1>
+<ul>
+<li>http-types, cookies</li>
+<li>wai, warp</li>
+<li>scotty</li>
+<li>Spock</li>
+<li>Servant</li>
+<li>Yesod</li>
+</ul>
+
+</div><div id="monadic-partylibmonadicpartyscotty.hs" class="slide section level2">
+<h1><code>monadic-party/lib/MonadicParty/Scotty.hs</code></h1>
+<div class="sourceCode" id="cb24"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb24-1" data-line-number="1"><span class="ot">{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}</span></a>
+<a class="sourceLine" id="cb24-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb24-3" data-line-number="3"><span class="kw">module</span> <span class="dt">MonadicParty.Scotty</span> (main) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb24-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb24-5" data-line-number="5"><span class="co">-- neat-interpolation</span></a>
+<a class="sourceLine" id="cb24-6" data-line-number="6"><span class="kw">import</span> <span class="dt">NeatInterpolation</span></a>
+<a class="sourceLine" id="cb24-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb24-8" data-line-number="8"><span class="co">-- scotty</span></a>
+<a class="sourceLine" id="cb24-9" data-line-number="9"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Web.Scotty</span> <span class="kw">as</span> <span class="dt">Scotty</span></a>
+<a class="sourceLine" id="cb24-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb24-11" data-line-number="11"><span class="co">-- text</span></a>
+<a class="sourceLine" id="cb24-12" data-line-number="12"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Text.Lazy</span></a>
+<a class="sourceLine" id="cb24-13" data-line-number="13"></a>
+<a class="sourceLine" id="cb24-14" data-line-number="14"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb24-15" data-line-number="15">main <span class="fu">=</span></a>
+<a class="sourceLine" id="cb24-16" data-line-number="16">    Scotty.scotty <span class="dv">8000</span> scottyApp</a>
+<a class="sourceLine" id="cb24-17" data-line-number="17"></a>
+<a class="sourceLine" id="cb24-18" data-line-number="18"><span class="ot">scottyApp ::</span> <span class="dt">Scotty.ScottyM</span> ()</a>
+<a class="sourceLine" id="cb24-19" data-line-number="19">scottyApp <span class="fu">=</span></a>
+<a class="sourceLine" id="cb24-20" data-line-number="20">    Scotty.get <span class="st">&quot;/scotty&quot;</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb24-21" data-line-number="21">        Scotty.html (Data.Text.Lazy.fromStrict [text|</a>
+<a class="sourceLine" id="cb24-22" data-line-number="22">            &lt;!doctype html&gt;</a>
+<a class="sourceLine" id="cb24-23" data-line-number="23">            &lt;html&gt;</a>
+<a class="sourceLine" id="cb24-24" data-line-number="24">                &lt;head&gt;&lt;/head&gt;</a>
+<a class="sourceLine" id="cb24-25" data-line-number="25">                &lt;body&gt;</a>
+<a class="sourceLine" id="cb24-26" data-line-number="26">                    Hello, I am a very basic Scotty demo,</a>
+<a class="sourceLine" id="cb24-27" data-line-number="27">                    serving (internally) on port 8000.</a>
+<a class="sourceLine" id="cb24-28" data-line-number="28">                &lt;/body&gt;</a>
+<a class="sourceLine" id="cb24-29" data-line-number="29">            &lt;/html&gt;</a>
+<a class="sourceLine" id="cb24-30" data-line-number="30">          |])</a></code></pre></div>
+</div><div id="server.nix-1" class="slide section level2">
+<h1><code>server.nix</code></h1>
+<div class="sourceCode" id="cb25"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb25-1" data-line-number="1"><span class="bu">let</span></a>
+<a class="sourceLine" id="cb25-2" data-line-number="2">    <span class="ex">nixos</span> = import <span class="op">&lt;</span>nixpkgs/nixos<span class="op">&gt;</span> {</a>
+<a class="sourceLine" id="cb25-3" data-line-number="3">        <span class="ex">configuration</span> = {</a>
+<a class="sourceLine" id="cb25-4" data-line-number="4">            <span class="ex">imports</span> = [</a>
+<a class="sourceLine" id="cb25-5" data-line-number="5">                <span class="ex">./modules/bootstrap.nix</span></a>
+<a class="sourceLine" id="cb25-6" data-line-number="6">                <span class="ex">./modules/party-scotty.nix</span></a>
+<a class="sourceLine" id="cb25-7" data-line-number="7">                <span class="ex">./modules/nginx.nix</span></a>
+<a class="sourceLine" id="cb25-8" data-line-number="8">            ];</a>
+<a class="sourceLine" id="cb25-9" data-line-number="9">            <span class="ex">config</span> = {</a>
+<a class="sourceLine" id="cb25-10" data-line-number="10">                <span class="ex">networking.hostName</span> = <span class="st">&quot;monadic-party&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb25-11" data-line-number="11">                <span class="ex">nixpkgs.config.allowUnfree</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb25-12" data-line-number="12">                <span class="ex">users.users.monadic-party</span> = <span class="dt">{}</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb25-13" data-line-number="13">            };</a>
+<a class="sourceLine" id="cb25-14" data-line-number="14">        };</a>
+<a class="sourceLine" id="cb25-15" data-line-number="15">    };</a>
+<a class="sourceLine" id="cb25-16" data-line-number="16"><span class="kw">in</span></a>
+<a class="sourceLine" id="cb25-17" data-line-number="17">    <span class="ex">nixos.system</span></a></code></pre></div>
+
+</div><div id="modulesparty-scotty.nix" class="slide section level2">
+<h1><code>modules/party-scotty.nix</code></h1>
+<div class="sourceCode" id="cb26"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb26-1" data-line-number="1"><span class="kw">{</span> <span class="ex">pkgs</span>, ... <span class="kw">}</span>:</a>
+<a class="sourceLine" id="cb26-2" data-line-number="2"><span class="kw">{</span></a>
+<a class="sourceLine" id="cb26-3" data-line-number="3">    <span class="ex">imports</span> = [</a>
+<a class="sourceLine" id="cb26-4" data-line-number="4">    ];</a>
+<a class="sourceLine" id="cb26-5" data-line-number="5">    <span class="ex">config</span> = {</a>
+<a class="sourceLine" id="cb26-6" data-line-number="6">        <span class="ex">systemd.services.party-scotty</span> = {</a>
+<a class="sourceLine" id="cb26-7" data-line-number="7">            <span class="bu">enable</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb26-8" data-line-number="8">            <span class="ex">description</span> = <span class="st">&quot;Monadic Party - Scotty&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb26-9" data-line-number="9">            <span class="ex">wantedBy</span> = [<span class="st">&quot;multi-user.target&quot;</span>]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb26-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb26-11" data-line-number="11">            <span class="ex">environment</span> = {</a>
+<a class="sourceLine" id="cb26-12" data-line-number="12">                <span class="ex">LC_ALL</span> = <span class="st">&quot;en_US.UTF-8&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb26-13" data-line-number="13">                <span class="ex">LOCALE_ARCHIVE</span> = <span class="st">&quot;</span><span class="va">${pkgs</span><span class="er">.glibcLocales</span><span class="va">}</span><span class="st">/lib/locale/locale-archive&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb26-14" data-line-number="14">            <span class="kw">}</span>;</a>
+<a class="sourceLine" id="cb26-15" data-line-number="15"></a>
+<a class="sourceLine" id="cb26-16" data-line-number="16">            <span class="ex">serviceConfig</span> = {</a>
+<a class="sourceLine" id="cb26-17" data-line-number="17">                <span class="ex">User</span> = <span class="st">&quot;monadic-party&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb26-18" data-line-number="18">                <span class="ex">Restart</span> = <span class="st">&quot;on-failure&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb26-19" data-line-number="19">                <span class="ex">ExecStart</span> = <span class="st">&quot;</span><span class="va">${import</span><span class="er"> ..</span><span class="va">/</span>monadic-party { inherit pkgs; <span class="va">}</span><span class="st">}/bin/party-scotty&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb26-20" data-line-number="20">            };</a>
+<a class="sourceLine" id="cb26-21" data-line-number="21">        };</a>
+<a class="sourceLine" id="cb26-22" data-line-number="22">    };</a>
+<a class="sourceLine" id="cb26-23" data-line-number="23">}</a></code></pre></div>
+</div><div id="modulesnginx.nix" class="slide section level2">
+<h1><code>modules/nginx.nix</code></h1>
+<div class="sourceCode" id="cb27"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb27-1" data-line-number="1"><span class="kw">{</span> <span class="ex">pkgs</span>, ... <span class="kw">}</span>:</a>
+<a class="sourceLine" id="cb27-2" data-line-number="2"><span class="kw">{</span></a>
+<a class="sourceLine" id="cb27-3" data-line-number="3">    <span class="ex">imports</span> = [</a>
+<a class="sourceLine" id="cb27-4" data-line-number="4">    ];</a>
+<a class="sourceLine" id="cb27-5" data-line-number="5">    <span class="ex">config</span> = {</a>
+<a class="sourceLine" id="cb27-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb27-7" data-line-number="7">        <span class="ex">networking.firewall.allowedTCPPorts</span> = [ 80 443 ]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb27-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb27-9" data-line-number="9">        <span class="ex">services.nginx</span> = {</a>
+<a class="sourceLine" id="cb27-10" data-line-number="10">            <span class="bu">enable</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb27-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb27-12" data-line-number="12">            <span class="ex">recommendedGzipSettings</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb27-13" data-line-number="13">            <span class="ex">recommendedOptimisation</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb27-14" data-line-number="14">            <span class="ex">recommendedProxySettings</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb27-15" data-line-number="15">            <span class="ex">recommendedTlsSettings</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb27-16" data-line-number="16"></a>
+<a class="sourceLine" id="cb27-17" data-line-number="17">            <span class="ex">virtualHosts.</span><span class="st">&quot;monadic-party.chris-martin.org&quot;</span> = {</a>
+<a class="sourceLine" id="cb27-18" data-line-number="18"></a>
+<a class="sourceLine" id="cb27-19" data-line-number="19">                <span class="ex">enableACME</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb27-20" data-line-number="20">                <span class="ex">addSSL</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb27-21" data-line-number="21"></a>
+<a class="sourceLine" id="cb27-22" data-line-number="22">                <span class="ex">locations.</span><span class="st">&quot;/scotty&quot;</span>.proxyPass =</a>
+<a class="sourceLine" id="cb27-23" data-line-number="23">                    <span class="st">&quot;http://localhost:8000&quot;</span>;</a>
+<a class="sourceLine" id="cb27-24" data-line-number="24">            <span class="kw">}</span>;</a>
+<a class="sourceLine" id="cb27-25" data-line-number="25">        };</a>
+<a class="sourceLine" id="cb27-26" data-line-number="26">    };</a>
+<a class="sourceLine" id="cb27-27" data-line-number="27">}</a></code></pre></div>
+</div>
+<div id="haskell-on-nixos-day-2" class="title-slide slide section level1"><h1>Haskell on NixOS – Day 2</h1></div><div id="review" class="slide section level2">
+<h1>Review</h1>
+<ul>
+<li>Nix is about repeatable builds that we can copy from one machine to another</li>
+<li>Store paths are hashes of built inputs.</li>
+<li>We launched an EC2 instance with a minimal NixOS config in the “user data”</li>
+<li>We update it by running <code>./deploy.hs</code> that we walked through yesterday</li>
+</ul>
+</div><div id="review-2" class="slide section level2">
+<h1>Review (2)</h1>
+<p>Haskell project setup:</p>
+<ul>
+<li><code>monadic-party.cabal</code></li>
+<li><code>default.nix</code> specifies how to build a package for deployment</li>
+<li><code>shell.nix</code> defines our development environment</li>
+</ul>
+</div><div id="review-3" class="slide section level2">
+<h1>Review (3)</h1>
+<p>Nix tools we’ve seen:</p>
+<ul>
+<li><code>nix-shell</code></li>
+<li><code>nix-build</code></li>
+<li><code>nix-copy-closure</code></li>
+<li><code>nix-collect-garbage</code></li>
+</ul>
+</div><div id="review-4" class="slide section level2">
+<h1>Review (4)</h1>
+<p>NixOS modules on our server:</p>
+<ul>
+<li><code>modules/bootstrap.nix</code></li>
+<li><code>modules/party-scotty.nix</code></li>
+<li><code>modules/nginx.nix</code></li>
+</ul>
+</div>
+<div id="systemd-activated-sockets" class="title-slide slide section level1"><h1>Systemd-activated sockets</h1></div><div id="the-problem" class="slide section level2">
+<h1>The problem</h1>
+<p>502 Bad Gateway</p>
+</div><div id="socket-activation" class="slide section level2">
+<h1>Socket activation</h1>
+<ul>
+<li>A program that is “socket-activated” receives “activated sockets”</li>
+<li>Start services lazily
+<ul>
+<li>When someone connects to the socket, systemd will start the associated service</li>
+<li>(This isn’t relevant here, but it’s cool)</li>
+</ul></li>
+<li>The socket stays up even while the service is down</li>
+</ul>
+</div><div id="modulesparty-socket.nix" class="slide section level2">
+<h1><code>modules/party-socket.nix</code></h1>
+<div class="sourceCode" id="cb28"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb28-1" data-line-number="1"><span class="kw">{</span> <span class="ex">pkgs</span>, ... <span class="kw">}</span>:</a>
+<a class="sourceLine" id="cb28-2" data-line-number="2"><span class="kw">{</span></a>
+<a class="sourceLine" id="cb28-3" data-line-number="3">    <span class="ex">config</span> = {</a>
+<a class="sourceLine" id="cb28-4" data-line-number="4">        <span class="ex">systemd.services.party-socket</span> = {</a>
+<a class="sourceLine" id="cb28-5" data-line-number="5">            <span class="bu">enable</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-6" data-line-number="6">            <span class="ex">description</span> = <span class="st">&quot;Monadic Party - Socket&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-7" data-line-number="7">            <span class="ex">wantedBy</span> = [<span class="st">&quot;multi-user.target&quot;</span>]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-8" data-line-number="8">            <span class="ex">requires</span> = [<span class="st">&quot;party-socket.socket&quot;</span>]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb28-10" data-line-number="10">            <span class="ex">environment</span> = {</a>
+<a class="sourceLine" id="cb28-11" data-line-number="11">                <span class="ex">LC_ALL</span> = <span class="st">&quot;en_US.UTF-8&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-12" data-line-number="12">                <span class="ex">LOCALE_ARCHIVE</span> = <span class="st">&quot;</span><span class="va">${pkgs</span><span class="er">.glibcLocales</span><span class="va">}</span><span class="st">/lib/locale/locale-archive&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-13" data-line-number="13">            <span class="kw">}</span>;</a>
+<a class="sourceLine" id="cb28-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb28-15" data-line-number="15">            <span class="ex">serviceConfig</span> = {</a>
+<a class="sourceLine" id="cb28-16" data-line-number="16">                <span class="ex">User</span> = <span class="st">&quot;monadic-party&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-17" data-line-number="17">                <span class="ex">Restart</span> = <span class="st">&quot;on-failure&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-18" data-line-number="18">                <span class="ex">ExecStart</span> = <span class="st">&quot;</span><span class="va">${import</span><span class="er"> ..</span><span class="va">/</span>monadic-party { inherit pkgs; <span class="va">}</span><span class="st">}/bin/party-socket&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-19" data-line-number="19">            };</a>
+<a class="sourceLine" id="cb28-20" data-line-number="20">        };</a>
+<a class="sourceLine" id="cb28-21" data-line-number="21"></a>
+<a class="sourceLine" id="cb28-22" data-line-number="22">        <span class="ex">systemd.sockets.party-socket</span> = {</a>
+<a class="sourceLine" id="cb28-23" data-line-number="23">            <span class="ex">wantedBy</span> = [<span class="st">&quot;sockets.target&quot;</span>]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-24" data-line-number="24">            <span class="ex">socketConfig</span> = {</a>
+<a class="sourceLine" id="cb28-25" data-line-number="25">                <span class="ex">ListenStream</span> = <span class="st">&quot;/run/party-socket.socket&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb28-26" data-line-number="26">            };</a>
+<a class="sourceLine" id="cb28-27" data-line-number="27">        };</a>
+<a class="sourceLine" id="cb28-28" data-line-number="28">    };</a>
+<a class="sourceLine" id="cb28-29" data-line-number="29">}</a></code></pre></div>
+</div><div id="socket-activation-haskell-library" class="slide section level2">
+<h1><code>socket-activation</code> Haskell library</h1>
+<div class="sourceCode" id="cb29"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb29-1" data-line-number="1"><span class="kw">module</span> <span class="dt">Network.Socket.Activation</span> <span class="kw">where</span></a></code></pre></div>
+<div class="sourceCode" id="cb30"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb30-1" data-line-number="1"><span class="co">-- | Return a list of activated sockets, if the program was started</span></a>
+<a class="sourceLine" id="cb30-2" data-line-number="2"><span class="co">-- with socket activation. The sockets are in the same order as in</span></a>
+<a class="sourceLine" id="cb30-3" data-line-number="3"><span class="co">-- the associated .socket file.</span></a>
+<a class="sourceLine" id="cb30-4" data-line-number="4"><span class="ot">getActivatedSockets ::</span> <span class="dt">IO</span> (<span class="dt">Maybe</span> [<span class="dt">Socket</span>])</a></code></pre></div>
+</div><div id="socket-activation-haskell-library-2" class="slide section level2">
+<h1><code>socket-activation</code> Haskell library (2)</h1>
+<div class="sourceCode" id="cb31"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb31-1" data-line-number="1"><span class="co">-- | Return a list of activated sockets, if the program was started</span></a>
+<a class="sourceLine" id="cb31-2" data-line-number="2"><span class="co">-- with socket activation. The sockets are in the same order as in</span></a>
+<a class="sourceLine" id="cb31-3" data-line-number="3"><span class="co">-- the associated .socket file.</span></a>
+<a class="sourceLine" id="cb31-4" data-line-number="4"><span class="ot">getActivatedSockets ::</span> <span class="dt">IO</span> (<span class="dt">Maybe</span> [<span class="dt">Socket</span>])</a>
+<a class="sourceLine" id="cb31-5" data-line-number="5">getActivatedSockets <span class="fu">=</span></a>
+<a class="sourceLine" id="cb31-6" data-line-number="6">  runMaybeT <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb31-7" data-line-number="7">    listenPid <span class="ot">&lt;-</span> read <span class="fu">&lt;$&gt;</span> <span class="dt">MaybeT</span> (getEnv <span class="st">&quot;LISTEN_PID&quot;</span>)</a>
+<a class="sourceLine" id="cb31-8" data-line-number="8">    listenFDs <span class="ot">&lt;-</span> read <span class="fu">&lt;$&gt;</span> <span class="dt">MaybeT</span> (getEnv <span class="st">&quot;LISTEN_FDS&quot;</span>)</a>
+<a class="sourceLine" id="cb31-9" data-line-number="9">    myPid     <span class="ot">&lt;-</span> lift getProcessID</a>
+<a class="sourceLine" id="cb31-10" data-line-number="10">    guard <span class="fu">$</span> listenPid <span class="fu">==</span> myPid</a>
+<a class="sourceLine" id="cb31-11" data-line-number="11">    mapM makeSocket [fdStart <span class="fu">..</span> fdStart <span class="fu">+</span> listenFDs <span class="fu">-</span> <span class="dv">1</span>]</a>
+<a class="sourceLine" id="cb31-12" data-line-number="12">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb31-13" data-line-number="13">    fdStart <span class="fu">=</span> <span class="dv">3</span></a></code></pre></div>
+</div><div id="functions-to-start-scotty" class="slide section level2">
+<h1>Functions to start Scotty</h1>
+<div class="sourceCode" id="cb32"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb32-1" data-line-number="1"><span class="co">-- | Run a scotty application using the warp server.</span></a>
+<a class="sourceLine" id="cb32-2" data-line-number="2"><span class="ot">scotty ::</span> <span class="dt">Port</span> <span class="ot">-&gt;</span> <span class="dt">ScottyM</span> () <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb32-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb32-4" data-line-number="4"><span class="co">-- | Run a scotty application using the warp server, passing extra options.</span></a>
+<a class="sourceLine" id="cb32-5" data-line-number="5"><span class="ot">scottyOpts ::</span> <span class="dt">Options</span> <span class="ot">-&gt;</span> <span class="dt">ScottyM</span> () <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb32-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb32-7" data-line-number="7"><span class="co">-- | Run a scotty application using the warp server, passing extra options,</span></a>
+<a class="sourceLine" id="cb32-8" data-line-number="8"><span class="co">-- and listening on the provided socket.</span></a>
+<a class="sourceLine" id="cb32-9" data-line-number="9"><span class="ot">scottySocket ::</span> <span class="dt">Options</span> <span class="ot">-&gt;</span> <span class="dt">Socket</span> <span class="ot">-&gt;</span> <span class="dt">ScottyM</span> () <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</a></code></pre></div>
+</div><div id="scotty-options" class="slide section level2">
+<h1>Scotty <code>Options</code></h1>
+<p><img src="./screenshots/scotty.png" class="screenshot" /></p>
+</div><div id="data-default-class-haskell-library" class="slide section level2">
+<h1><code>data-default-class</code> Haskell library</h1>
+<div class="sourceCode" id="cb33"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb33-1" data-line-number="1"><span class="kw">module</span> <span class="dt">Data.Default.Class</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb33-3" data-line-number="3"><span class="co">-- | A class for types with a default value.</span></a>
+<a class="sourceLine" id="cb33-4" data-line-number="4"><span class="kw">class</span> <span class="dt">Default</span> a <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb33-6" data-line-number="6">    <span class="co">-- | The default value for this type.</span></a>
+<a class="sourceLine" id="cb33-7" data-line-number="7"><span class="ot">    def ::</span> a</a></code></pre></div>
+</div><div id="typeapplications" class="slide section level2">
+<h1><code>TypeApplications</code></h1>
+<ul>
+<li><code>{-# LANGUAGE TypeApplications #-}</code></li>
+<li><code>def @Web.Scotty.Options</code></li>
+</ul>
+</div><div id="network-haskell-library" class="slide section level2">
+<h1><code>network</code> Haskell library</h1>
+<div class="sourceCode" id="cb34"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb34-1" data-line-number="1"><span class="kw">module</span> <span class="dt">Network.Socket</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb34-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb34-3" data-line-number="3"><span class="ot">fdSocket ::</span> <span class="dt">Socket</span> <span class="ot">-&gt;</span> <span class="dt">CInt</span></a>
+<a class="sourceLine" id="cb34-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb34-5" data-line-number="5"><span class="co">-- | Set the nonblocking flag on Unix.</span></a>
+<a class="sourceLine" id="cb34-6" data-line-number="6"><span class="ot">setNonBlockIfNeeded ::</span> <span class="dt">CInt</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</a></code></pre></div>
+</div><div id="monadic-partylibmonadicpartysocket.hs" class="slide section level2">
+<h1><code>monadic-party/lib/MonadicParty/Socket.hs</code></h1>
+<div class="sourceCode" id="cb35"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb35-1" data-line-number="1"><span class="ot">{-# LANGUAGE OverloadedStrings, QuasiQuotes,</span></a>
+<a class="sourceLine" id="cb35-2" data-line-number="2"><span class="ot">             ScopedTypeVariables, TypeApplications #-}</span></a>
+<a class="sourceLine" id="cb35-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb35-4" data-line-number="4"><span class="kw">module</span> <span class="dt">MonadicParty.Socket</span> (main) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb35-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb35-6" data-line-number="6"><span class="co">-- base</span></a>
+<a class="sourceLine" id="cb35-7" data-line-number="7"><span class="kw">import</span> <span class="dt">System.Exit</span> (die)</a>
+<a class="sourceLine" id="cb35-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb35-9" data-line-number="9"><span class="co">-- data-default-class</span></a>
+<a class="sourceLine" id="cb35-10" data-line-number="10"><span class="kw">import</span> <span class="dt">Data.Default.Class</span> (def)</a>
+<a class="sourceLine" id="cb35-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb35-12" data-line-number="12"><span class="co">-- neat-interpolation</span></a>
+<a class="sourceLine" id="cb35-13" data-line-number="13"><span class="kw">import</span> <span class="dt">NeatInterpolation</span></a>
+<a class="sourceLine" id="cb35-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb35-15" data-line-number="15"><span class="co">-- network</span></a>
+<a class="sourceLine" id="cb35-16" data-line-number="16"><span class="kw">import</span> <span class="dt">Network.Socket</span> (<span class="dt">Socket</span>)</a>
+<a class="sourceLine" id="cb35-17" data-line-number="17"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Network.Socket</span> <span class="kw">as</span> <span class="dt">Socket</span></a>
+<a class="sourceLine" id="cb35-18" data-line-number="18"></a>
+<a class="sourceLine" id="cb35-19" data-line-number="19"><span class="co">-- scotty</span></a>
+<a class="sourceLine" id="cb35-20" data-line-number="20"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Web.Scotty</span> <span class="kw">as</span> <span class="dt">Scotty</span></a>
+<a class="sourceLine" id="cb35-21" data-line-number="21"></a>
+<a class="sourceLine" id="cb35-22" data-line-number="22"><span class="co">-- socket-activation</span></a>
+<a class="sourceLine" id="cb35-23" data-line-number="23"><span class="kw">import</span> <span class="dt">Network.Socket.Activation</span> (getActivatedSockets)</a>
+<a class="sourceLine" id="cb35-24" data-line-number="24"></a>
+<a class="sourceLine" id="cb35-25" data-line-number="25"><span class="co">-- text</span></a>
+<a class="sourceLine" id="cb35-26" data-line-number="26"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Text.Lazy</span></a>
+<a class="sourceLine" id="cb35-27" data-line-number="27"></a>
+<a class="sourceLine" id="cb35-28" data-line-number="28"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb35-29" data-line-number="29">main <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb35-30" data-line-number="30"></a>
+<a class="sourceLine" id="cb35-31" data-line-number="31"><span class="ot">    socketsMaybe ::</span> <span class="dt">Maybe</span> [<span class="dt">Socket</span>] <span class="ot">&lt;-</span> getActivatedSockets</a>
+<a class="sourceLine" id="cb35-32" data-line-number="32"></a>
+<a class="sourceLine" id="cb35-33" data-line-number="33">    <span class="kw">case</span> socketsMaybe <span class="kw">of</span></a>
+<a class="sourceLine" id="cb35-34" data-line-number="34"></a>
+<a class="sourceLine" id="cb35-35" data-line-number="35">        <span class="dt">Just</span> [socket] <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb35-36" data-line-number="36">          <span class="kw">do</span></a>
+<a class="sourceLine" id="cb35-37" data-line-number="37">            Socket.setNonBlockIfNeeded (Socket.fdSocket socket)</a>
+<a class="sourceLine" id="cb35-38" data-line-number="38">            Scotty.scottySocket (def <span class="fu">@</span><span class="dt">Scotty.Options</span>) socket scottyApp</a>
+<a class="sourceLine" id="cb35-39" data-line-number="39"></a>
+<a class="sourceLine" id="cb35-40" data-line-number="40">        <span class="dt">Just</span> sockets <span class="ot">-&gt;</span> die (<span class="st">&quot;Wrong number of sockets: &quot;</span> <span class="fu">++</span></a>
+<a class="sourceLine" id="cb35-41" data-line-number="41">                             show (length sockets))</a>
+<a class="sourceLine" id="cb35-42" data-line-number="42"></a>
+<a class="sourceLine" id="cb35-43" data-line-number="43">        <span class="dt">Nothing</span> <span class="ot">-&gt;</span> die <span class="st">&quot;Not socket activated&quot;</span></a>
+<a class="sourceLine" id="cb35-44" data-line-number="44"></a>
+<a class="sourceLine" id="cb35-45" data-line-number="45"><span class="ot">scottyApp ::</span> <span class="dt">Scotty.ScottyM</span> ()</a>
+<a class="sourceLine" id="cb35-46" data-line-number="46">scottyApp <span class="fu">=</span></a>
+<a class="sourceLine" id="cb35-47" data-line-number="47">    Scotty.get <span class="st">&quot;/socket&quot;</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb35-48" data-line-number="48">        Scotty.html (Data.Text.Lazy.fromStrict [text|</a>
+<a class="sourceLine" id="cb35-49" data-line-number="49">            &lt;!doctype html&gt;</a>
+<a class="sourceLine" id="cb35-50" data-line-number="50">            &lt;html&gt;</a>
+<a class="sourceLine" id="cb35-51" data-line-number="51">                &lt;head&gt;&lt;/head&gt;</a>
+<a class="sourceLine" id="cb35-52" data-line-number="52">                &lt;body&gt;</a>
+<a class="sourceLine" id="cb35-53" data-line-number="53">                    This one is socket activated.</a>
+<a class="sourceLine" id="cb35-54" data-line-number="54">                &lt;/body&gt;</a>
+<a class="sourceLine" id="cb35-55" data-line-number="55">            &lt;/html&gt;</a>
+<a class="sourceLine" id="cb35-56" data-line-number="56">          |])</a></code></pre></div>
+</div><div id="another-possibility" class="slide section level2">
+<h1>Another possibility</h1>
+<div class="sourceCode" id="cb36"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb36-1" data-line-number="1"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb36-2" data-line-number="2">main <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb36-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb36-4" data-line-number="4"><span class="ot">    socketsMaybe ::</span> <span class="dt">Maybe</span> [<span class="dt">Socket</span>] <span class="ot">&lt;-</span> getActivatedSockets</a>
+<a class="sourceLine" id="cb36-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb36-6" data-line-number="6">    <span class="kw">case</span> socketsMaybe <span class="kw">of</span></a>
+<a class="sourceLine" id="cb36-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb36-8" data-line-number="8">        <span class="dt">Nothing</span> <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb36-9" data-line-number="9">            Scotty.scotty <span class="dv">8001</span> scottyApp</a>
+<a class="sourceLine" id="cb36-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb36-11" data-line-number="11">        <span class="dt">Just</span> [socket] <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb36-12" data-line-number="12">          <span class="kw">do</span></a>
+<a class="sourceLine" id="cb36-13" data-line-number="13">            Socket.setNonBlockIfNeeded (Socket.fdSocket socket)</a>
+<a class="sourceLine" id="cb36-14" data-line-number="14">            Scotty.scottySocket (def <span class="fu">@</span><span class="dt">Scotty.Options</span>) socket scottyApp</a>
+<a class="sourceLine" id="cb36-15" data-line-number="15"></a>
+<a class="sourceLine" id="cb36-16" data-line-number="16">        <span class="dt">Just</span> sockets <span class="ot">-&gt;</span> die (<span class="st">&quot;Wrong number of sockets: &quot;</span> <span class="fu">++</span></a>
+<a class="sourceLine" id="cb36-17" data-line-number="17">                             show (length sockets))</a></code></pre></div>
+</div><div id="server.nix-2" class="slide section level2">
+<h1><code>server.nix</code></h1>
+<div class="sourceCode" id="cb37"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb37-1" data-line-number="1"><span class="bu">let</span></a>
+<a class="sourceLine" id="cb37-2" data-line-number="2">    <span class="ex">nixos</span> = import <span class="op">&lt;</span>nixpkgs/nixos<span class="op">&gt;</span> {</a>
+<a class="sourceLine" id="cb37-3" data-line-number="3">        <span class="ex">configuration</span> = {</a>
+<a class="sourceLine" id="cb37-4" data-line-number="4">            <span class="ex">imports</span> = [</a>
+<a class="sourceLine" id="cb37-5" data-line-number="5">                <span class="ex">./modules/bootstrap.nix</span></a>
+<a class="sourceLine" id="cb37-6" data-line-number="6">                <span class="ex">./modules/party-scotty.nix</span></a>
+<a class="sourceLine" id="cb37-7" data-line-number="7">                <span class="ex">./modules/party-socket.nix</span></a>
+<a class="sourceLine" id="cb37-8" data-line-number="8">                <span class="ex">./modules/nginx.nix</span></a>
+<a class="sourceLine" id="cb37-9" data-line-number="9">            ];</a>
+<a class="sourceLine" id="cb37-10" data-line-number="10">            <span class="ex">config</span> = {</a>
+<a class="sourceLine" id="cb37-11" data-line-number="11">                <span class="ex">networking.hostName</span> = <span class="st">&quot;monadic-party&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb37-12" data-line-number="12">                <span class="ex">nixpkgs.config.allowUnfree</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb37-13" data-line-number="13">                <span class="ex">users.users.monadic-party</span> = <span class="dt">{}</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb37-14" data-line-number="14">            };</a>
+<a class="sourceLine" id="cb37-15" data-line-number="15">        };</a>
+<a class="sourceLine" id="cb37-16" data-line-number="16">    };</a>
+<a class="sourceLine" id="cb37-17" data-line-number="17"><span class="kw">in</span></a>
+<a class="sourceLine" id="cb37-18" data-line-number="18">    <span class="ex">nixos.system</span></a></code></pre></div>
+</div><div id="modulesnginx.nix-1" class="slide section level2">
+<h1><code>modules/nginx.nix</code></h1>
+<div class="sourceCode" id="cb38"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb38-1" data-line-number="1"><span class="kw">{</span> <span class="ex">pkgs</span>, ... <span class="kw">}</span>:</a>
+<a class="sourceLine" id="cb38-2" data-line-number="2"><span class="kw">{</span></a>
+<a class="sourceLine" id="cb38-3" data-line-number="3">    <span class="ex">imports</span> = [</a>
+<a class="sourceLine" id="cb38-4" data-line-number="4">    ];</a>
+<a class="sourceLine" id="cb38-5" data-line-number="5">    <span class="ex">config</span> = {</a>
+<a class="sourceLine" id="cb38-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb38-7" data-line-number="7">        <span class="ex">networking.firewall.allowedTCPPorts</span> = [ 80 443 ]<span class="kw">;</span></a>
+<a class="sourceLine" id="cb38-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb38-9" data-line-number="9">        <span class="ex">services.nginx</span> = {</a>
+<a class="sourceLine" id="cb38-10" data-line-number="10">            <span class="bu">enable</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb38-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb38-12" data-line-number="12">            <span class="ex">recommendedGzipSettings</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb38-13" data-line-number="13">            <span class="ex">recommendedOptimisation</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb38-14" data-line-number="14">            <span class="ex">recommendedProxySettings</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb38-15" data-line-number="15">            <span class="ex">recommendedTlsSettings</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb38-16" data-line-number="16"></a>
+<a class="sourceLine" id="cb38-17" data-line-number="17">            <span class="ex">virtualHosts.</span><span class="st">&quot;monadic-party.chris-martin.org&quot;</span> = {</a>
+<a class="sourceLine" id="cb38-18" data-line-number="18"></a>
+<a class="sourceLine" id="cb38-19" data-line-number="19">                <span class="ex">enableACME</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb38-20" data-line-number="20">                <span class="ex">addSSL</span> = true<span class="kw">;</span></a>
+<a class="sourceLine" id="cb38-21" data-line-number="21"></a>
+<a class="sourceLine" id="cb38-22" data-line-number="22">                <span class="ex">locations.</span><span class="st">&quot;/scotty&quot;</span>.proxyPass =</a>
+<a class="sourceLine" id="cb38-23" data-line-number="23">                    <span class="st">&quot;http://localhost:8000&quot;</span>;</a>
+<a class="sourceLine" id="cb38-24" data-line-number="24"></a>
+<a class="sourceLine" id="cb38-25" data-line-number="25">                <span class="ex">locations.</span><span class="st">&quot;/socket&quot;</span>.proxyPass =</a>
+<a class="sourceLine" id="cb38-26" data-line-number="26">                    <span class="st">&quot;http://unix:/run/party-socket.socket&quot;</span>;</a>
+<a class="sourceLine" id="cb38-27" data-line-number="27"></a>
+<a class="sourceLine" id="cb38-28" data-line-number="28">            <span class="kw">}</span>;</a>
+<a class="sourceLine" id="cb38-29" data-line-number="29">        };</a>
+<a class="sourceLine" id="cb38-30" data-line-number="30">    };</a>
+<a class="sourceLine" id="cb38-31" data-line-number="31">}</a></code></pre></div>
+</div><div id="curling-a-unix-socket" class="slide section level2">
+<h1>Curling a Unix socket</h1>
+<pre><code>❮bash❯ curl --unix-socket /run/party-socket.socket dummydomain/socket
+hello</code></pre>
+</div>
+<div id="nixpkgs-version-pinning" class="title-slide slide section level1"><h1>Nixpkgs version pinning</h1></div><div id="why-pinning" class="slide section level2">
+<h1>Why pinning</h1>
+<ul>
+<li>I lied about reproducible builds</li>
+<li>But we can fix it</li>
+</ul>
+
+</div><div id="nix_path" class="slide section level2">
+<h1><code>NIX_PATH</code></h1>
+<ul>
+<li><p>Typically <code>NIX_PATH=$HOME/.nix-defexpr/channels</code></p></li>
+<li><p><code>&lt;nixpkgs&gt;</code> = <code>$NIX_PATH/nixpkgs</code></p></li>
+<li><p><code>&lt;nixpkgs/nixos&gt;</code> = <code>$NIX_PATH/nixpkgs/nixos</code></p></li>
+<li><p><code>nix-channel --update</code> changes the nixpkgs expression!</p></li>
+</ul>
+</div><div id="nix_path-2" class="slide section level2">
+<h1><code>NIX_PATH</code> (2)</h1>
+<ul>
+<li><code>NIX_PATH</code>, more precisely, is a colon-separated list where each entry is either
+<ul>
+<li>A directory containing Nix channels</li>
+<li><code>name=path</code> where <code>path</code> is a Nix channel</li>
+</ul></li>
+</ul>
+</div><div id="nixpkgs.nix" class="slide section level2">
+<h1><code>nixpkgs.nix</code></h1>
+<div class="sourceCode" id="cb40"><pre class="sourceCode nix"><code class="sourceCode bash"><a class="sourceLine" id="cb40-1" data-line-number="1"><span class="co"># nix-prefetch-url --unpack https://github.com/NixOS/nixpkgs/archive/&lt;rev&gt;.tar.gz</span></a>
+<a class="sourceLine" id="cb40-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb40-3" data-line-number="3"><span class="kw">(</span><span class="ex">import</span> <span class="op">&lt;</span>nixpkgs<span class="op">&gt;</span> { }<span class="kw">)</span><span class="ex">.fetchFromGitHub</span> {</a>
+<a class="sourceLine" id="cb40-4" data-line-number="4">  <span class="ex">owner</span> = <span class="st">&quot;NixOS&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb40-5" data-line-number="5">  <span class="ex">repo</span> = <span class="st">&quot;nixpkgs&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb40-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb40-7" data-line-number="7">  <span class="co"># NixOS 18.03, 2018 Mar 18</span></a>
+<a class="sourceLine" id="cb40-8" data-line-number="8">  <span class="fu">rev</span> = <span class="st">&quot;0e7c9b32817e5cbe61212d47a6cf9bcd71789322&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb40-9" data-line-number="9">  <span class="ex">sha256</span> = <span class="st">&quot;1dm777cmlhqcwlrq8zl9q2d87h3p70rclpvq36y43kp378f3pd0y&quot;</span><span class="kw">;</span></a>
+<a class="sourceLine" id="cb40-10" data-line-number="10">}</a></code></pre></div>
+</div><div id="deploy.hs-1" class="slide section level2">
+<h1><code>deploy.hs</code></h1>
+<div class="sourceCode" id="cb41"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb41-1" data-line-number="1"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb41-2" data-line-number="2">main <span class="fu">=</span></a>
+<a class="sourceLine" id="cb41-3" data-line-number="3">  sh <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb41-4" data-line-number="4">    nixpkgs <span class="ot">&lt;-</span> getNixpkgs <span class="co">-- Get the pinned nixpkgs</span></a>
+<a class="sourceLine" id="cb41-5" data-line-number="5">    setNixPath nixpkgs    <span class="co">-- Set the NIX_PATH environment variable</span></a>
+<a class="sourceLine" id="cb41-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb41-7" data-line-number="7">    server <span class="ot">&lt;-</span> getServer   <span class="co">-- Read the server address from a file</span></a>
+<a class="sourceLine" id="cb41-8" data-line-number="8">    path <span class="ot">&lt;-</span> build         <span class="co">-- (1) Build NixOS for our server</span></a>
+<a class="sourceLine" id="cb41-9" data-line-number="9">    upload server path    <span class="co">-- (2) Upload the build to the server</span></a>
+<a class="sourceLine" id="cb41-10" data-line-number="10">    activate server path  <span class="co">-- (3) Start running the new version</span></a></code></pre></div>
+</div><div id="nixpkgs" class="slide section level2">
+<h1><code>Nixpkgs</code></h1>
+<div class="sourceCode" id="cb42"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb42-1" data-line-number="1"><span class="kw">newtype</span> <span class="dt">Nixpkgs</span> <span class="fu">=</span> <span class="dt">Nixpkgs</span> <span class="dt">Text</span></a></code></pre></div>
+</div><div id="getnixpkgs" class="slide section level2">
+<h1><code>getNixpkgs</code></h1>
+<div class="sourceCode" id="cb43"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb43-1" data-line-number="1"><span class="ot">getNixpkgs ::</span> <span class="dt">Shell</span> <span class="dt">Nixpkgs</span></a>
+<a class="sourceLine" id="cb43-2" data-line-number="2">getNixpkgs <span class="fu">=</span></a>
+<a class="sourceLine" id="cb43-3" data-line-number="3">  <span class="kw">do</span></a>
+<a class="sourceLine" id="cb43-4" data-line-number="4">    line <span class="ot">&lt;-</span> single (inproc command args empty)</a>
+<a class="sourceLine" id="cb43-5" data-line-number="5">    return (<span class="dt">Nixpkgs</span> (lineToText line))</a>
+<a class="sourceLine" id="cb43-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb43-7" data-line-number="7">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb43-8" data-line-number="8">    command <span class="fu">=</span> <span class="st">&quot;nix-build&quot;</span></a>
+<a class="sourceLine" id="cb43-9" data-line-number="9">    args <span class="fu">=</span> [<span class="st">&quot;nixpkgs.nix&quot;</span>, <span class="st">&quot;--no-out-link&quot;</span>]</a></code></pre></div>
+</div><div id="setnixpath" class="slide section level2">
+<h1><code>setNixPath</code></h1>
+<div class="sourceCode" id="cb44"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb44-1" data-line-number="1"><span class="ot">setNixPath ::</span> <span class="dt">Nixpkgs</span> <span class="ot">-&gt;</span> <span class="dt">Shell</span> ()</a>
+<a class="sourceLine" id="cb44-2" data-line-number="2">setNixPath (<span class="dt">Nixpkgs</span> path) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb44-3" data-line-number="3">    export <span class="st">&quot;NIX_PATH&quot;</span> (<span class="st">&quot;nixpkgs=&quot;</span> <span class="fu">&lt;&gt;</span> path)</a></code></pre></div>
+</div>
+<div id="logging" class="title-slide slide section level1"><h1>Logging</h1></div><div id="logging-approach" class="slide section level2">
+<h1>Logging approach</h1>
+<ul>
+<li>Write to stdout
+<ul>
+<li>Logs will end up in <em>Journald</em></li>
+<li><code>journalctl -f</code></li>
+<li><code>journalctl -u party-count</code></li>
+</ul></li>
+<li>Keep it simple as possible
+<ul>
+<li>But don’t let multiple threads write at once</li>
+</ul></li>
+</ul>
+</div><div id="a-tiny-logging-framework" class="slide section level2">
+<h1>A tiny logging framework</h1>
+<ul>
+<li><code>newLog     :: IO LogHandle</code></li>
+<li><code>writeToLog :: LogHandle -&gt; Text -&gt; IO ()</code></li>
+<li><code>runLogger  :: LogHandle -&gt; IO a</code>
+<ul>
+<li>(What can we infer from this type?)</li>
+</ul></li>
+</ul>
+</div><div id="a-queue-of-text" class="slide section level2">
+<h1>A queue of <code>Text</code></h1>
+<div class="sourceCode" id="cb45"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb45-1" data-line-number="1"><span class="co">-- stm</span></a>
+<a class="sourceLine" id="cb45-2" data-line-number="2"><span class="kw">import</span> <span class="dt">Control.Concurrent.STM</span> (atomically)</a>
+<a class="sourceLine" id="cb45-3" data-line-number="3"><span class="kw">import</span> <span class="dt">Control.Concurrent.STM.TChan</span></a>
+<a class="sourceLine" id="cb45-4" data-line-number="4">    (<span class="dt">TChan</span>, newTChanIO, readTChan, writeTChan)</a>
+<a class="sourceLine" id="cb45-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb45-6" data-line-number="6"><span class="kw">data</span> <span class="dt">LogHandle</span> <span class="fu">=</span> <span class="dt">LogHandle</span> (<span class="dt">TChan</span> <span class="dt">Text</span>)</a></code></pre></div>
+</div><div id="newlog" class="slide section level2">
+<h1><code>newLog</code></h1>
+<div class="sourceCode" id="cb46"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb46-1" data-line-number="1"><span class="ot">newLog ::</span> <span class="dt">IO</span> <span class="dt">LogHandle</span></a>
+<a class="sourceLine" id="cb46-2" data-line-number="2">newLog <span class="fu">=</span></a>
+<a class="sourceLine" id="cb46-3" data-line-number="3">    <span class="dt">LogHandle</span> <span class="fu">&lt;$&gt;</span> newTChanIO</a></code></pre></div>
+</div><div id="writetolog" class="slide section level2">
+<h1><code>writeToLog</code></h1>
+<div class="sourceCode" id="cb47"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb47-1" data-line-number="1"><span class="ot">writeToLog ::</span> <span class="dt">LogHandle</span> <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb47-2" data-line-number="2">writeToLog (<span class="dt">LogHandle</span> chan) message <span class="fu">=</span></a>
+<a class="sourceLine" id="cb47-3" data-line-number="3">    atomically (writeTChan chan message)</a></code></pre></div>
+</div><div id="runlogger" class="slide section level2">
+<h1><code>runLogger</code></h1>
+<div class="sourceCode" id="cb48"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb48-1" data-line-number="1"><span class="kw">import</span> <span class="dt">Control.Monad</span> (forever)</a>
+<a class="sourceLine" id="cb48-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb48-3" data-line-number="3"><span class="ot">runLogger ::</span> <span class="dt">LogHandle</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> a</a>
+<a class="sourceLine" id="cb48-4" data-line-number="4">runLogger (<span class="dt">LogHandle</span> chan) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb48-5" data-line-number="5">    forever <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb48-6" data-line-number="6">        message <span class="ot">&lt;-</span> atomically (readTChan chan)</a>
+<a class="sourceLine" id="cb48-7" data-line-number="7">        Data.Text.IO.putStrLn message</a></code></pre></div>
+</div><div id="async-haskell-library" class="slide section level2">
+<h1><code>async</code> Haskell library</h1>
+<div class="sourceCode" id="cb49"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb49-1" data-line-number="1"><span class="ot">concurrently_ ::</span> <span class="dt">IO</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> b <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</a></code></pre></div>
+</div><div id="main-with-a-logger" class="slide section level2">
+<h1>Main with a logger</h1>
+<div class="sourceCode" id="cb50"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb50-1" data-line-number="1"><span class="kw">import</span> <span class="dt">Control.Concurrent.Async</span> (concurrently_)</a>
+<a class="sourceLine" id="cb50-2" data-line-number="2"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">System.IO</span> <span class="kw">as</span> <span class="dt">IO</span></a>
+<a class="sourceLine" id="cb50-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb50-4" data-line-number="4"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb50-5" data-line-number="5">main <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb50-6" data-line-number="6">    <span class="dt">IO</span><span class="fu">.</span>hSetBuffering <span class="dt">IO</span><span class="fu">.</span>stdout <span class="dt">IO</span><span class="fu">.</span><span class="dt">LineBuffering</span></a>
+<a class="sourceLine" id="cb50-7" data-line-number="7">    logHandle <span class="ot">&lt;-</span> newLog</a>
+<a class="sourceLine" id="cb50-8" data-line-number="8">    concurrently_ (runLogger logHandle) runServer</a>
+<a class="sourceLine" id="cb50-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb50-10" data-line-number="10"><span class="ot">runServer ::</span> <span class="dt">IO</span> a</a>
+<a class="sourceLine" id="cb50-11" data-line-number="11">runServer <span class="fu">=</span> undefined</a></code></pre></div>
+</div>
+</body>
+</html>
